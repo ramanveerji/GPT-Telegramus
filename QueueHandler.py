@@ -203,8 +203,7 @@ def _user_module_cooldown(config: dict,
     lang = UsersHandler.get_key_or_none(request.user, "lang", 0)
 
     # Calculate time left
-    if time_left_seconds < 0:
-        time_left_seconds = 0
+    time_left_seconds = max(time_left_seconds, 0)
     time_left_hours = time_left_seconds // 3600
     time_left_minutes = (time_left_seconds - (time_left_hours * 3600)) // 60
     time_left_seconds = time_left_seconds - (time_left_hours * 3600) - (time_left_minutes * 60)
@@ -212,18 +211,18 @@ def _user_module_cooldown(config: dict,
     # Convert to string (ex. 1h 20m 9s)
     time_left_str = ""
     if time_left_hours > 0:
-        if len(time_left_str) > 0:
+        if time_left_str != "":
             time_left_str += " "
         time_left_str += str(time_left_hours) + messages[lang]["hours"]
     if time_left_minutes > 0:
-        if len(time_left_str) > 0:
+        if time_left_str != "":
             time_left_str += " "
         time_left_str += str(time_left_minutes) + messages[lang]["minutes"]
     if time_left_seconds > 0:
-        if len(time_left_str) > 0:
+        if time_left_str != "":
             time_left_str += " "
         time_left_str += str(time_left_seconds) + messages[lang]["seconds"]
-    if time_left_str == "":
+    if not time_left_str:
         time_left_str = "0" + messages[lang]["seconds"]
 
     # Generate cooldown message
@@ -289,14 +288,11 @@ def _request_processor(config: dict,
             else:
                 request_.user["timestamp_chatgpt"] = int(time.time())
                 users_handler.save_user(request_.user)
-                proxy_ = None
-                if proxy and config["chatgpt"]["proxy"] == "auto":
-                    proxy_ = proxy
+                proxy_ = proxy if proxy and config["chatgpt"]["proxy"] == "auto" else None
                 chatgpt_module.initialize(proxy_)
                 chatgpt_module.process_request(request_)
                 chatgpt_module.exit()
 
-        # DALL-E
         elif request_.request_type == RequestResponseContainer.REQUEST_TYPE_DALLE:
             dalle_user_last_request_timestamp = UsersHandler.get_key_or_none(request_.user, "timestamp_dalle", 0)
             time_passed_seconds = int(time.time()) - dalle_user_last_request_timestamp
@@ -308,13 +304,10 @@ def _request_processor(config: dict,
             else:
                 request_.user["timestamp_dalle"] = int(time.time())
                 users_handler.save_user(request_.user)
-                proxy_ = None
-                if proxy and config["dalle"]["proxy"] == "auto":
-                    proxy_ = proxy
+                proxy_ = proxy if proxy and config["dalle"]["proxy"] == "auto" else None
                 dalle_module.initialize(proxy_)
                 dalle_module.process_request(request_)
 
-        # EdgeGPT
         elif request_.request_type == RequestResponseContainer.REQUEST_TYPE_EDGEGPT:
             edgegpt_user_last_request_timestamp = UsersHandler.get_key_or_none(request_.user, "timestamp_edgegpt", 0)
             time_passed_seconds = int(time.time()) - edgegpt_user_last_request_timestamp
@@ -326,14 +319,11 @@ def _request_processor(config: dict,
             else:
                 request_.user["timestamp_edgegpt"] = int(time.time())
                 users_handler.save_user(request_.user)
-                proxy_ = None
-                if proxy and config["edgegpt"]["proxy"] == "auto":
-                    proxy_ = proxy
+                proxy_ = proxy if proxy and config["edgegpt"]["proxy"] == "auto" else None
                 edgegpt_module.initialize(proxy_)
                 edgegpt_module.process_request(request_)
                 edgegpt_module.exit()
 
-        # Bard
         elif request_.request_type == RequestResponseContainer.REQUEST_TYPE_BARD:
             bard_user_last_request_timestamp = UsersHandler.get_key_or_none(request_.user, "timestamp_bard", 0)
             time_passed_seconds = int(time.time()) - bard_user_last_request_timestamp
@@ -345,14 +335,11 @@ def _request_processor(config: dict,
             else:
                 request_.user["timestamp_bard"] = int(time.time())
                 users_handler.save_user(request_.user)
-                proxy_ = None
-                if proxy and config["bard"]["proxy"] == "auto":
-                    proxy_ = proxy
+                proxy_ = proxy if proxy and config["bard"]["proxy"] == "auto" else None
                 bard_module.initialize(proxy_)
                 bard_module.process_request(request_)
                 bard_module.exit()
 
-        # Bing ImageGen
         elif request_.request_type == RequestResponseContainer.REQUEST_TYPE_BING_IMAGEGEN:
             bing_imagegen_user_last_request_timestamp \
                 = UsersHandler.get_key_or_none(request_.user, "timestamp_bing_imagegen", 0)
@@ -371,11 +358,9 @@ def _request_processor(config: dict,
                 bing_image_gen_module.initialize(proxy_)
                 bing_image_gen_module.process_request(request_)
 
-        # Wrong API type
         else:
             raise Exception("Wrong request type: {0}".format(request_.request_type))
 
-    # Error during processing request
     except Exception as e:
         request_.error = True
         lang = UsersHandler.get_key_or_none(request_.user, "lang", 0)
@@ -461,14 +446,12 @@ class QueueHandler:
                 for request_ in queue_list:
                     # Check if we're not processing this request yet
                     if request_.processing_state == RequestResponseContainer.PROCESSING_STATE_IN_QUEUE:
-                        # Check if requested module is busy
-                        module_busy = False
-                        for request__ in queue_list:
-                            if request__.request_type == request_.request_type \
-                                    and request__.pid > 0 and psutil.pid_exists(request__.pid):
-                                module_busy = True
-                                break
-
+                        module_busy = any(
+                            request__.request_type == request_.request_type
+                            and request__.pid > 0
+                            and psutil.pid_exists(request__.pid)
+                            for request__ in queue_list
+                        )
                         # Module is available. We can process this request
                         if not module_busy:
                             # Set initializing state
@@ -531,7 +514,7 @@ class QueueHandler:
 
                             # Set timeout status and message
                             request_.processing_state = RequestResponseContainer.PROCESSING_STATE_TIMED_OUT
-                            request_.response = "Timed out (>{} s)".format(timeout_seconds)
+                            request_.response = f"Timed out (>{timeout_seconds} s)"
                             request_.error = True
 
                             # Update
@@ -562,25 +545,27 @@ class QueueHandler:
                         put_container_to_queue(self.request_response_queue, None, request_)
 
                     # Done processing / Timed out -> log data and finally remove it
-                    if request_.processing_state == RequestResponseContainer.PROCESSING_STATE_DONE \
-                            or request_.processing_state == RequestResponseContainer.PROCESSING_STATE_TIMED_OUT:
+                    if request_.processing_state in [
+                        RequestResponseContainer.PROCESSING_STATE_DONE,
+                        RequestResponseContainer.PROCESSING_STATE_TIMED_OUT,
+                    ]:
                         # Kill process if it is active
                         if request_.pid > 0 and psutil.pid_exists(request_.pid):
-                            logging.info("Trying to kill process with PID {}".format(request_.pid))
+                            logging.info(f"Trying to kill process with PID {request_.pid}")
                             try:
                                 process = psutil.Process(request_.pid)
                                 process.terminate()
                                 process.kill()
                                 process.wait(timeout=5)
                             except Exception as e:
-                                logging.error("Error killing process with PID {}".format(request_.pid), exc_info=e)
-                            logging.info("Killed? {}".format(not psutil.pid_exists(request_.pid)))
+                                logging.error(f"Error killing process with PID {request_.pid}", exc_info=e)
+                            logging.info(f"Killed? {not psutil.pid_exists(request_.pid)}")
 
                         # Set response timestamp (for data collecting)
                         response_timestamp = ""
                         if self.config["data_collecting"]["enabled"]:
                             response_timestamp = datetime.datetime.now() \
-                                .strftime(self.config["data_collecting"]["timestamp_format"])
+                                    .strftime(self.config["data_collecting"]["timestamp_format"])
                         request_.response_timestamp = response_timestamp
 
                         # Log response
@@ -600,7 +585,6 @@ class QueueHandler:
                 # Sleep 100ms before next cycle
                 time.sleep(0.1)
 
-            # Exit requested
             except KeyboardInterrupt:
                 logging.warning("KeyboardInterrupt @ queue_processing_loop")
                 self._exit_flag = True
@@ -610,15 +594,15 @@ class QueueHandler:
                     queue_list = queue_to_list(self.request_response_queue)
                     for container in queue_list:
                         if container.pid > 0 and psutil.pid_exists(container.pid):
-                            logging.info("Trying to kill process with PID {}".format(container.pid))
+                            logging.info(f"Trying to kill process with PID {container.pid}")
                             try:
                                 process = psutil.Process(container.pid)
                                 process.terminate()
                                 process.kill()
                                 process.wait(timeout=5)
                             except Exception as e:
-                                logging.error("Error killing process with PID {}".format(container.pid), exc_info=e)
-                            logging.info("Killed? {}".format(not psutil.pid_exists(container.pid)))
+                                logging.error(f"Error killing process with PID {container.pid}", exc_info=e)
+                            logging.info(f"Killed? {not psutil.pid_exists(container.pid)}")
 
                         remove_container_from_queue(self.request_response_queue, None, container.id)
 
@@ -628,7 +612,6 @@ class QueueHandler:
                 # Exit from loop
                 break
 
-            # Oh no, error! Why?
             except Exception as e:
                 logging.error("Error processing queue!", exc_info=e)
                 time.sleep(1)
@@ -652,7 +635,7 @@ class QueueHandler:
                 os.makedirs(self.config["files"]["data_collecting_dir"])
 
             file_timestamp = datetime.datetime.now() \
-                .strftime(self.config["data_collecting"]["filename_timestamp_format"])
+                    .strftime(self.config["data_collecting"]["filename_timestamp_format"])
             self._log_filename = os.path.join(self.config["files"]["data_collecting_dir"],
                                               file_timestamp + self.config["data_collecting"]["filename_extension"])
             logging.info("New file for data collecting: {0}".format(self._log_filename))
@@ -664,7 +647,7 @@ class QueueHandler:
             # Log request
             if log_request:
                 request_str_to_format = self.config["data_collecting"]["request_format"].replace("\\n", "\n") \
-                    .replace("\\t", "\t").replace("\\r", "\r")
+                        .replace("\\t", "\t").replace("\\r", "\r")
                 log_file.write(request_str_to_format.format(request_response.request_timestamp,
                                                             request_response.id,
                                                             request_response.user["user_name"],
@@ -673,20 +656,23 @@ class QueueHandler:
                                                             .REQUEST_NAMES[request_response.request_type],
                                                             request_response.request))
 
-            # Log response
             else:
                 response = "None"
                 try:
                     # DALL-E or BingImageGen response without error
-                    if (request_response.request_type == RequestResponseContainer.REQUEST_TYPE_DALLE
-                        or request_response.request_type == RequestResponseContainer.REQUEST_TYPE_BING_IMAGEGEN) \
-                            and not request_response.error:
+                    if (
+                        request_response.request_type
+                        in [
+                            RequestResponseContainer.REQUEST_TYPE_DALLE,
+                            RequestResponseContainer.REQUEST_TYPE_BING_IMAGEGEN,
+                        ]
+                        and not request_response.error
+                    ):
                         response_url = request_response.response if type(request_response.response) == str\
-                            else request_response.response[0]
+                                else request_response.response[0]
                         response = base64.b64encode(requests.get(response_url, timeout=120).content) \
-                            .decode("utf-8")
+                                .decode("utf-8")
 
-                    # Text response (ChatGPT, EdgeGPT, Bard)
                     else:
                         response = request_response.response
                 except Exception as e:
@@ -695,7 +681,7 @@ class QueueHandler:
 
                 # Log response
                 response_str_to_format = self.config["data_collecting"]["response_format"].replace("\\n", "\n") \
-                    .replace("\\t", "\t").replace("\\r", "\r")
+                        .replace("\\t", "\t").replace("\\r", "\r")
                 log_file.write(response_str_to_format.format(request_response.response_timestamp,
                                                              request_response.id,
                                                              request_response.user["user_name"],
@@ -708,7 +694,6 @@ class QueueHandler:
             logging.info("The {0} were written to the file: {1}".format("request" if log_request else "response",
                                                                         self._log_filename))
 
-        # Error processing or logging data
         except Exception as e:
             logging.error("Error collecting data!", exc_info=e)
 

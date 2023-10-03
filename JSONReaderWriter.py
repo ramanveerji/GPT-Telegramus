@@ -32,10 +32,8 @@ def load_json(file_name: str, logging_enabled=True):
             if logging_enabled:
                 logging.info("Loading {0}".format(file_name))
 
-            messages_file = open(file_name, encoding="utf-8")
-            json_content = json.load(messages_file)
-            messages_file.close()
-
+            with open(file_name, encoding="utf-8") as messages_file:
+                json_content = json.load(messages_file)
             if json_content is not None:
                 if logging_enabled:
                     logging.info("Loaded json from {0}".format(file_name))
@@ -66,6 +64,5 @@ def save_json(file_name: str, content, logging_enabled=True):
     """
     if logging_enabled:
         logging.info("Saving to {0}".format(file_name))
-    file = open(file_name, "w")
-    json.dump(content, file, indent=4)
-    file.close()
+    with open(file_name, "w") as file:
+        json.dump(content, file, indent=4)

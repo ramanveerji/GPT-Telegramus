@@ -44,7 +44,7 @@ class DALLEModule:
                 proxy = self.config["dalle"]["proxy"]
 
             # Log
-            logging.info("Initializing DALL-E module with proxy {}".format(proxy))
+            logging.info(f"Initializing DALL-E module with proxy {proxy}")
 
             # Set enabled status
             self._enabled = self.config["modules"]["dalle"]
@@ -62,7 +62,6 @@ class DALLEModule:
             # Done?
             logging.info("DALL-E module initialized")
 
-        # Error
         except Exception as e:
             self._enabled = False
             raise e
@@ -80,7 +79,7 @@ class DALLEModule:
         if not self._enabled:
             logging.error("DALL-E module not initialized!")
             request_response.response = self.messages[lang]["response_error"].replace("\\n", "\n") \
-                .format("DALL-E module not initialized!")
+                    .format("DALL-E module not initialized!")
             request_response.error = True
             return
 
@@ -108,17 +107,15 @@ class DALLEModule:
                          .format(request_response.user["user_name"], request_response.user["user_id"]))
             request_response.response = response_url
 
-        # Exit requested
         except KeyboardInterrupt:
             logging.warning("KeyboardInterrupt @ process_request")
             return
 
-        # DALL-E or other error
         except Exception as e:
             logging.error("Error processing request!", exc_info=e)
             error_text = str(e)
             if len(error_text) > 100:
-                error_text = error_text[:100] + "..."
+                error_text = f"{error_text[:100]}..."
 
             request_response.response = self.messages[lang]["response_error"].replace("\\n", "\n").format(error_text)
             request_response.error = True

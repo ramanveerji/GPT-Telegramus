@@ -53,7 +53,7 @@ class BardModule:
                 proxy = self.config["bard"]["proxy"]
 
             # Log
-            logging.info("Initializing Bard module with proxy {}".format(proxy))
+            logging.info(f"Initializing Bard module with proxy {proxy}")
 
             # Set enabled status
             self._enabled = self.config["modules"]["bard"]
@@ -75,7 +75,6 @@ class BardModule:
             else:
                 self._enabled = False
 
-        # Error
         except Exception as e:
             self._enabled = False
             raise e
@@ -91,7 +90,7 @@ class BardModule:
             logging.error("Bard module not initialized!")
             lang = UsersHandler.get_key_or_none(request_response.user, "lang", 0)
             request_response.response = self.messages[lang]["response_error"].replace("\\n", "\n") \
-                .format("Bard module not initialized!")
+                    .format("Bard module not initialized!")
             request_response.error = True
             self.processing_flag.value = False
             return
@@ -109,10 +108,12 @@ class BardModule:
 
             # Try to load conversation
             if bard_conversation_id:
-                conversation_file = os.path.join(self.config["files"]["conversations_dir"],
-                                                 bard_conversation_id + ".json")
+                conversation_file = os.path.join(
+                    self.config["files"]["conversations_dir"],
+                    f"{bard_conversation_id}.json",
+                )
                 if os.path.exists(conversation_file):
-                    logging.info("Loading conversation from {}".format(conversation_file))
+                    logging.info(f"Loading conversation from {conversation_file}")
                     self._chatbot.load_conversation(conversation_file, bard_conversation_id)
                 else:
                     bard_conversation_id = None
@@ -132,28 +133,31 @@ class BardModule:
 
             # Generate new conversation id
             if not bard_conversation_id:
-                bard_conversation_id = str(uuid.uuid4()) + "_bard"
+                bard_conversation_id = f"{str(uuid.uuid4())}_bard"
 
             # Save conversation
-            logging.info("Saving conversation to {}".format(bard_conversation_id))
-            self._chatbot.save_conversation(os.path.join(self.config["files"]["conversations_dir"],
-                                                         bard_conversation_id + ".json"), bard_conversation_id)
+            logging.info(f"Saving conversation to {bard_conversation_id}")
+            self._chatbot.save_conversation(
+                os.path.join(
+                    self.config["files"]["conversations_dir"],
+                    f"{bard_conversation_id}.json",
+                ),
+                bard_conversation_id,
+            )
 
             # Save to user data
             request_response.user["bard_conversation_id"] = bard_conversation_id
             self.users_handler.save_user(request_response.user)
 
-        # Exit requested
         except KeyboardInterrupt:
             logging.warning("KeyboardInterrupt @ process_request")
             return
 
-        # Bard or other error
         except Exception as e:
             logging.error("Error processing request!", exc_info=e)
             error_text = str(e)
             if len(error_text) > 100:
-                error_text = error_text[:100] + "..."
+                error_text = f"{error_text[:100]}..."
 
             lang = UsersHandler.get_key_or_none(request_response.user, "lang", 0)
             request_response.response = self.messages[lang]["response_error"].replace("\\n", "\n").format(error_text)
@@ -171,17 +175,17 @@ class BardModule:
         :param user:
         :return:
         """
-        # Get conversation id
-        bard_conversation_id = UsersHandler.get_key_or_none(user, "bard_conversation_id")
-
-        # Check if we need to clear it
-        if bard_conversation_id:
+        if bard_conversation_id := UsersHandler.get_key_or_none(
+            user, "bard_conversation_id"
+        ):
             # Delete file
             try:
-                conversation_file = os.path.join(self.config["files"]["conversations_dir"],
-                                                 bard_conversation_id + ".json")
+                conversation_file = os.path.join(
+                    self.config["files"]["conversations_dir"],
+                    f"{bard_conversation_id}.json",
+                )
                 if os.path.exists(conversation_file):
-                    logging.info("Removing {}".format(conversation_file))
+                    logging.info(f"Removing {conversation_file}")
                     os.remove(conversation_file)
             except Exception as e:
                 logging.error("Error removing conversation file!", exc_info=e)

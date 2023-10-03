@@ -53,7 +53,7 @@ class BingImageGenModule:
                 proxy = self.config["bing_imagegen"]["proxy"]
 
             # Log
-            logging.info("Initializing Bing ImageGen module with proxy {}".format(proxy))
+            logging.info(f"Initializing Bing ImageGen module with proxy {proxy}")
 
             # Set enabled status
             self._enabled = self.config["modules"]["bing_imagegen"]
@@ -94,7 +94,6 @@ class BingImageGenModule:
             if self._image_generator is not None:
                 logging.info("Bing ImageGen module initialized")
 
-        # Error
         except Exception as e:
             self._enabled = False
             raise e
@@ -112,7 +111,7 @@ class BingImageGenModule:
         if not self._enabled:
             logging.error("Bing ImageGen module not initialized!")
             request_response.response = self.messages[lang]["response_error"].replace("\\n", "\n") \
-                .format("Bing ImageGen module not initialized!")
+                    .format("Bing ImageGen module not initialized!")
             request_response.error = True
             return
 
@@ -134,17 +133,15 @@ class BingImageGenModule:
                          .format(request_response.user["user_name"], request_response.user["user_id"]))
             request_response.response = response_urls
 
-        # Exit requested
         except KeyboardInterrupt:
             logging.warning("KeyboardInterrupt @ process_request")
             return
 
-        # DALL-E or other error
         except Exception as e:
             logging.error("Error processing request!", exc_info=e)
             error_text = str(e)
             if len(error_text) > 100:
-                error_text = error_text[:100] + "..."
+                error_text = f"{error_text[:100]}..."
 
             request_response.response = self.messages[lang]["response_error"].replace("\\n", "\n").format(error_text)
             request_response.error = True

@@ -60,7 +60,7 @@ class ChatGPTModule:
                 proxy = self.config["chatgpt"]["proxy"]
 
             # Log
-            logging.info("Initializing ChatGPT module with proxy {}".format(proxy))
+            logging.info(f"Initializing ChatGPT module with proxy {proxy}")
 
             # Set enabled status
             self._enabled = self.config["modules"]["chatgpt"]
@@ -82,7 +82,6 @@ class ChatGPTModule:
                 from revChatGPT.V1 import Chatbot
                 self._chatbot = Chatbot(config=self._get_chatbot_config(proxy))
 
-            # API type 3
             elif self.config["chatgpt"]["api_type"] == 3:
                 logging.info("Initializing ChatGPT module with API type 3")
                 from revChatGPT.V3 import Chatbot
@@ -93,7 +92,7 @@ class ChatGPTModule:
                     proxy = ""
 
                 # Initialize chatbot
-                if len(engine) > 0:
+                if engine != "":
                     self._chatbot = Chatbot(str(self.config["chatgpt"]["api_key"]),
                                             proxy=proxy,
                                             engine=engine)
@@ -101,7 +100,6 @@ class ChatGPTModule:
                     self._chatbot = Chatbot(str(self.config["chatgpt"]["api_key"]),
                                             proxy=proxy)
 
-            # Wrong API type
             else:
                 raise Exception("Wrong API type: {0}".format(self.config["chatgpt"]["api_type"]))
 
@@ -109,7 +107,6 @@ class ChatGPTModule:
             if self._chatbot is not None:
                 logging.info("ChatGPT module initialized")
 
-        # Error
         except Exception as e:
             self._enabled = False
             raise e
@@ -127,7 +124,7 @@ class ChatGPTModule:
         if not self._enabled or self._chatbot is None:
             logging.error("ChatGPT module not initialized!")
             request_response.response = self.messages[lang]["response_error"].replace("\\n", "\n") \
-                .format("ChatGPT module not initialized!")
+                    .format("ChatGPT module not initialized!")
             request_response.error = True
             self.processing_flag.value = False
             return
@@ -257,24 +254,22 @@ class ChatGPTModule:
                 logging.warning("Empty response for user {0} ({1})!"
                                 .format(request_response.user["user_name"], request_response.user["user_id"]))
                 request_response.response = self.messages[lang]["response_error"].replace("\\n", "\n") \
-                    .format("Empty response!")
+                        .format("Empty response!")
                 request_response.error = True
 
             # Clear processing flag
             self.processing_flag.value = False
 
-        # Exit requested
         except KeyboardInterrupt:
             logging.warning("KeyboardInterrupt @ process_request")
             self.processing_flag.value = False
             return
 
-        # ChatGPT or other error
         except Exception as e:
             logging.error("Error processing request!", exc_info=e)
             error_text = str(e)
             if len(error_text) > 100:
-                error_text = error_text[:100] + "..."
+                error_text = f"{error_text[:100]}..."
 
             request_response.response = self.messages[lang]["response_error"].replace("\\n", "\n").format(error_text)
             request_response.error = True
@@ -345,7 +340,10 @@ class ChatGPTModule:
             # API type 3
             if self.config["chatgpt"]["api_type"] == 3:
                 # Save as json file
-                conversation_file = os.path.join(self.config["files"]["conversations_dir"], conversation_id + ".json")
+                conversation_file = os.path.join(
+                    self.config["files"]["conversations_dir"],
+                    f"{conversation_id}.json",
+                )
                 with open(conversation_file, "w", encoding="utf-8") as json_file:
                     json.dump(self._chatbot.conversation, json_file, indent=4)
                     json_file.close()
@@ -370,7 +368,10 @@ class ChatGPTModule:
 
             # API type 3
             if self.config["chatgpt"]["api_type"] == 3:
-                conversation_file = os.path.join(self.config["files"]["conversations_dir"], conversation_id + ".json")
+                conversation_file = os.path.join(
+                    self.config["files"]["conversations_dir"],
+                    f"{conversation_id}.json",
+                )
                 if os.path.exists(conversation_file):
                     # Load from json file
                     with open(conversation_file, "r", encoding="utf-8") as json_file:
@@ -391,7 +392,7 @@ class ChatGPTModule:
         :param conversation_id:
         :return:
         """
-        logging.info("Deleting conversation " + conversation_id)
+        logging.info(f"Deleting conversation {conversation_id}")
         try:
             deleted = False
 
@@ -415,7 +416,10 @@ class ChatGPTModule:
 
             # Delete conversation file if exists
             try:
-                conversation_file = os.path.join(self.config["files"]["conversations_dir"], conversation_id + ".json")
+                conversation_file = os.path.join(
+                    self.config["files"]["conversations_dir"],
+                    f"{conversation_id}.json",
+                )
                 if os.path.exists(conversation_file):
                     logging.info("Deleting {0} file".format(conversation_file))
                     os.remove(conversation_file)
