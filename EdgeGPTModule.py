@@ -80,12 +80,12 @@ class EdgeGPTModule:
                 proxy = self.config["edgegpt"]["proxy"]
 
             # Log
-            logging.info("Initializing EdgeGPT module with proxy {}".format(proxy))
+            logging.info(f"Initializing EdgeGPT module with proxy {proxy}")
 
             # Read cookies file
             cookies = None
             if self.config["edgegpt"]["cookies_file"] and os.path.exists(self.config["edgegpt"]["cookies_file"]):
-                logging.info("Loading cookies from {}".format(self.config["edgegpt"]["cookies_file"]))
+                logging.info(f'Loading cookies from {self.config["edgegpt"]["cookies_file"]}')
                 cookies = json.loads(open(self.config["edgegpt"]["cookies_file"], encoding="utf-8").read())
 
             # Set enabled status
@@ -104,7 +104,6 @@ class EdgeGPTModule:
             if self._chatbot is not None:
                 logging.info("EdgeGPT module initialized")
 
-        # Error
         except Exception as e:
             self._enabled = False
             raise e
@@ -122,7 +121,7 @@ class EdgeGPTModule:
         if not self._enabled or self._chatbot is None:
             logging.error("EdgeGPT module not initialized!")
             request_response.response = self.messages[lang]["response_error"].replace("\\n", "\n") \
-                .format("EdgeGPT module not initialized!")
+                    .format("EdgeGPT module not initialized!")
             request_response.error = True
             return
 
@@ -174,7 +173,6 @@ class EdgeGPTModule:
                                     if "text" in message:
                                         text_response = message["text"]
 
-                    # Type 2
                     else:
                         if "item" in json_data:
                             item = json_data["item"]
@@ -194,12 +192,12 @@ class EdgeGPTModule:
                                             source_attributions = message["sourceAttributions"]
                                             for source_attribution in source_attributions:
                                                 if "providerDisplayName" in source_attribution \
-                                                        and "seeMoreUrl" in source_attribution:
+                                                            and "seeMoreUrl" in source_attribution:
                                                     response_sources.append((source_attribution["providerDisplayName"],
                                                                              source_attribution["seeMoreUrl"]))
 
                                         # We found it
-                                        if len(response_sources) > 0 and text_response:
+                                        if response_sources and text_response:
                                             break
 
                     # If we have text response
@@ -208,11 +206,11 @@ class EdgeGPTModule:
                         request_response.response = text_response
 
                         # Add sources
-                        if len(response_sources) > 0:
+                        if response_sources:
                             request_response.response += "\n"
                         for response_source in response_sources:
                             request_response.response += self.messages[lang]["edgegpt_sources"]\
-                                .format(response_source[0],
+                                    .format(response_source[0],
                                         response_source[1]).replace("\\n", "\n")
 
                         # Send message to user
@@ -228,7 +226,10 @@ class EdgeGPTModule:
 
             # Try to load conversation
             if conversation_id:
-                conversation_file = os.path.join(self.config["files"]["conversations_dir"], conversation_id + ".json")
+                conversation_file = os.path.join(
+                    self.config["files"]["conversations_dir"],
+                    f"{conversation_id}.json",
+                )
                 if os.path.exists(conversation_file):
                     logging.info("Loading conversation from {}".format(conversation_file))
                     asyncio.run(self._chatbot.load_conversation(conversation_file))
@@ -240,12 +241,18 @@ class EdgeGPTModule:
 
             # Generate new conversation id
             if not conversation_id:
-                conversation_id = str(uuid.uuid4()) + "_edgegpt"
+                conversation_id = f"{str(uuid.uuid4())}_edgegpt"
 
             # Save conversation
             logging.info("Saving conversation to {}".format(conversation_id))
-            asyncio.run(self._chatbot.save_conversation(os.path.join(self.config["files"]["conversations_dir"],
-                                                                     conversation_id + ".json")))
+            asyncio.run(
+                self._chatbot.save_conversation(
+                    os.path.join(
+                        self.config["files"]["conversations_dir"],
+                        f"{conversation_id}.json",
+                    )
+                )
+            )
 
             # Save to user data
             request_response.user["edgegpt_conversation_id"] = conversation_id
@@ -261,20 +268,18 @@ class EdgeGPTModule:
                 logging.warning("Empty response for user {0} ({1})!"
                                 .format(request_response.user["user_name"], request_response.user["user_id"]))
                 request_response.response = self.messages[lang]["response_error"].replace("\\n", "\n") \
-                    .format("Empty response!")
+                        .format("Empty response!")
                 request_response.error = True
 
-        # Exit requested
         except KeyboardInterrupt:
             logging.warning("KeyboardInterrupt @ process_request")
             return
 
-        # EdgeGPT or other error
         except Exception as e:
             logging.error("Error processing request!", exc_info=e)
             error_text = str(e)
             if len(error_text) > 100:
-                error_text = error_text[:100] + "..."
+                error_text = f"{error_text[:100]}..."
 
             request_response.response = self.messages[lang]["response_error"].replace("\\n", "\n").format(error_text)
             request_response.error = True
@@ -292,17 +297,17 @@ class EdgeGPTModule:
         :param user:
         :return:
         """
-        # Get conversation id
-        edgegpt_conversation_id = UsersHandler.get_key_or_none(user, "edgegpt_conversation_id")
-
-        # Check if we need to clear it
-        if edgegpt_conversation_id:
+        if edgegpt_conversation_id := UsersHandler.get_key_or_none(
+            user, "edgegpt_conversation_id"
+        ):
             # Delete file
             try:
-                conversation_file = os.path.join(self.config["files"]["conversations_dir"],
-                                                 edgegpt_conversation_id + ".json")
+                conversation_file = os.path.join(
+                    self.config["files"]["conversations_dir"],
+                    f"{edgegpt_conversation_id}.json",
+                )
                 if os.path.exists(conversation_file):
-                    logging.info("Removing {}".format(conversation_file))
+                    logging.info(f"Removing {conversation_file}")
                     os.remove(conversation_file)
             except Exception as e:
                 logging.error("Error removing conversation file!", exc_info=e)
@@ -318,9 +323,8 @@ class EdgeGPTModule:
         """
         if not self._enabled or self._chatbot is None:
             return
-        if self._chatbot is not None:
-            logging.warning("Closing EdgeGPT connection")
-            try:
-                async_helper(self._chatbot.close())
-            except Exception as e:
-                logging.error("Error closing EdgeGPT connection!", exc_info=e)
+        logging.warning("Closing EdgeGPT connection")
+        try:
+            async_helper(self._chatbot.close())
+        except Exception as e:
+            logging.error("Error closing EdgeGPT connection!", exc_info=e)

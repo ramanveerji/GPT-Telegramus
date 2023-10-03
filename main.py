@@ -72,10 +72,10 @@ def main():
     logging_handler_process = multiprocessing.Process(target=logging_handler.configure_and_start_listener)
     logging_handler_process.start()
     LoggingHandler.worker_configurer(logging_handler.queue)
-    logging.info("LoggingHandler PID: " + str(logging_handler_process.pid))
+    logging.info(f"LoggingHandler PID: {str(logging_handler_process.pid)}")
 
     # Log software version and GitHub link
-    logging.info("GPT-Telegramus version: " + str(__version__))
+    logging.info(f"GPT-Telegramus version: {str(__version__)}")
     logging.info("https://github.com/F33RNI/GPT-Telegramus")
 
     # Load config with multiprocessing support

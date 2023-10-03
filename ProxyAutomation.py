@@ -49,11 +49,7 @@ def proxy_tester_process(test_proxy_queue: multiprocessing.Queue,
     try:
         # Test all proxies until there is no more proxies to test
         while not test_proxy_queue.empty():
-            # Get proxy to test
-            proxy_to_test = test_proxy_queue.get(block=True, timeout=1)
-
-            # Is it correct proxy?
-            if proxy_to_test:
+            if proxy_to_test := test_proxy_queue.get(block=True, timeout=1):
                 # Set proxies
                 session.proxies.update({"http": proxy_to_test,
                                         "https": proxy_to_test})
@@ -70,12 +66,8 @@ def proxy_tester_process(test_proxy_queue: multiprocessing.Queue,
                 except:
                     pass
 
-    # Just exit on interrupt or error
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, Exception):
         pass
-    except Exception:
-        pass
-
     # Close current session
     session.close()
 
@@ -144,7 +136,9 @@ class ProxyAutomation:
 
                 # Get list of proxies
                 while not self._proxy_get() and not self._exit_flag:
-                    logging.info("Trying again to download proxies after {}s".format(GET_PROXY_EVERY_SECONDS))
+                    logging.info(
+                        f"Trying again to download proxies after {GET_PROXY_EVERY_SECONDS}s"
+                    )
                     time_started = time.time()
                     while not self._exit_flag and time.time() - time_started < GET_PROXY_EVERY_SECONDS:
                         time.sleep(0.1)
@@ -164,7 +158,7 @@ class ProxyAutomation:
 
                 # Start checkers
                 self._processes = []
-                for i in range(min(multiprocessing.cpu_count(), len(self._proxy_list))):
+                for _ in range(min(multiprocessing.cpu_count(), len(self._proxy_list))):
                     process = multiprocessing.Process(target=proxy_tester_process,
                                                       args=(self._test_proxy_queue,
                                                             self._working_proxy_queue,
@@ -184,7 +178,7 @@ class ProxyAutomation:
                                 self._processes.remove(process)
 
                         # Exit form waiting loop if no more processes or exit_flag
-                        if len(self._processes) == 0 or self._exit_flag:
+                        if not self._processes or self._exit_flag:
                             break
 
                         # Try to get first working proxy
@@ -208,7 +202,6 @@ class ProxyAutomation:
                             # Exit from waiting loop
                             break
 
-                    # Exit requested
                     except KeyboardInterrupt:
                         # Stop checkers
                         self._kill_processes()
@@ -246,25 +239,20 @@ class ProxyAutomation:
                         logging.error("Error checking proxy: {0}".format(str(e)))
                     session.close()
 
-                    # OK?
-                    if is_proxy_working:
-                        last_check_time = time.time()
-                        logging.info("Proxy checked successfully")
-
-                    # We need to find a new proxy
-                    else:
+                    if not is_proxy_working:
                         break
+
+                    last_check_time = time.time()
+                    logging.info("Proxy checked successfully")
 
                 # Exit from main loop if requested
                 if self._exit_flag:
                     break
 
-            # Exit requested
             except KeyboardInterrupt:
                 logging.warning("KeyboardInterrupt @ automation_loop")
                 break
 
-            # Oh no, error! Why?
             except Exception as e:
                 logging.error("Error searching for a working proxy!", exc_info=e)
                 time.sleep(1)
@@ -282,7 +270,7 @@ class ProxyAutomation:
         """
         for process in self._processes:
             if process is not None and process.is_alive():
-                logging.info("Killing process with PID: " + str(process.pid))
+                logging.info(f"Killing process with PID: {str(process.pid)}")
                 try:
                     process.kill()
                     process.join()
@@ -300,7 +288,7 @@ class ProxyAutomation:
         # Try to get proxy
         try:
             logging.info("Trying to get proxy list from: {0}".format(PROXY_FROM_URL))
-            req = request.Request("%s" % PROXY_FROM_URL)
+            req = request.Request(f"{PROXY_FROM_URL}")
             req.add_header("User-Agent", random.choice(useragents.USERAGENTS))
             sourcecode = request.urlopen(req)
             part = str(sourcecode.read()).replace(" ", "")
@@ -318,22 +306,21 @@ class ProxyAutomation:
 
                     # Check if country is in list
                     if self.config["proxy_automation"]["country_list_enabled"]:
-                        country_in_list = False
-                        for country_filter_code in self.config["proxy_automation"]["country_list"]:
-                            if country == country_filter_code.lower().strip():
-                                country_in_list = True
-                                break
-
-                    # Allow all countries if country list is disabled
+                        country_in_list = any(
+                            country == country_filter_code.lower().strip()
+                            for country_filter_code in self.config[
+                                "proxy_automation"
+                            ]["country_list"]
+                        )
                     else:
                         country_in_list = True
 
                     # Check data and append to list
                     if len(ip.split(".")) == 4 and len(port) > 1 and is_https and country_in_list:
-                        self._proxy_list.append("http://" + ip + ":" + port)
+                        self._proxy_list.append(f"http://{ip}:{port}")
                 except:
                     pass
-            if len(self._proxy_list) > 0:
+            if self._proxy_list:
                 logging.info("Proxies downloaded successfully")
                 return True
             else:

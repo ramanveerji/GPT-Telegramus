@@ -36,11 +36,7 @@ def get_key_or_none(dictionary: dict, key, default_value=None):
         return default_value
 
     if key in dictionary:
-        if dictionary[key] is None:
-            return default_value
-        else:
-            return dictionary[key]
-
+        return default_value if dictionary[key] is None else dictionary[key]
     return default_value
 
 
@@ -58,9 +54,7 @@ class UsersHandler:
         """
         with self.lock:
             users = JSONReaderWriter.load_json(self.config["files"]["users_database"])
-            if users is None:
-                return []
-            return users
+            return [] if users is None else users
 
     def get_user_by_id(self, user_id: int) -> dict:
         """
@@ -88,12 +82,14 @@ class UsersHandler:
         users = self.read_users()
 
         with self.lock:
-            user_index = -1
-            for i in range(len(users)):
-                if users[i]["user_id"] == user_data["user_id"]:
-                    user_index = i
-                    break
-
+            user_index = next(
+                (
+                    i
+                    for i in range(len(users))
+                    if users[i]["user_id"] == user_data["user_id"]
+                ),
+                -1,
+            )
             # User exists
             if user_index >= 0:
                 new_keys = user_data.keys()
@@ -116,12 +112,14 @@ class UsersHandler:
         user = {
             "user_id": user_id,
             "user_name": DEFAULT_USER_NAME,
-            "admin": True if user_id in self.config["telegram"]["admin_ids"] else False,
+            "admin": user_id in self.config["telegram"]["admin_ids"],
             "banned": self.config["telegram"]["ban_by_default"],
-            "ban_reason": self.messages[0]["ban_reason_default"].replace("\\n", "\n"),
+            "ban_reason": self.messages[0]["ban_reason_default"].replace(
+                "\\n", "\n"
+            ),
             "module": self.config["modules"]["default_module"],
             "requests_total": 0,
-            "reply_message_id_last": -1
+            "reply_message_id_last": -1,
         }
         self.save_user(user)
         return user

@@ -172,8 +172,10 @@ async def send_message_async(config: dict, messages: List[Dict],
                     buttons.append(button_continue)
 
             # Add clear button for all modules except DALL-E and Bing ImageGen
-            if not request_response.request_type == RequestResponseContainer.REQUEST_TYPE_DALLE \
-                    and not request_response.request_type == RequestResponseContainer.REQUEST_TYPE_BING_IMAGEGEN:
+            if request_response.request_type not in [
+                RequestResponseContainer.REQUEST_TYPE_DALLE,
+                RequestResponseContainer.REQUEST_TYPE_BING_IMAGEGEN,
+            ]:
                 button_clear = InlineKeyboardButton(messages[lang]["button_clear"],
                                                     callback_data="{0}_clear_{1}".format(
                                                         request_response.request_type,
@@ -198,9 +200,14 @@ async def send_message_async(config: dict, messages: List[Dict],
             request_response.reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=2))
 
             # Send message as image
-            if (request_response.request_type == RequestResponseContainer.REQUEST_TYPE_DALLE
-                or request_response.request_type == RequestResponseContainer.REQUEST_TYPE_BING_IMAGEGEN) \
-                    and not request_response.error:
+            if (
+                request_response.request_type
+                in [
+                    RequestResponseContainer.REQUEST_TYPE_DALLE,
+                    RequestResponseContainer.REQUEST_TYPE_BING_IMAGEGEN,
+                ]
+                and not request_response.error
+            ):
                 # Single photo
                 if type(request_response.response) == str:
                     request_response.message_id = (await (telegram.Bot(config["telegram"]["api_key"]).sendPhoto(
@@ -211,13 +218,8 @@ async def send_message_async(config: dict, messages: List[Dict],
                         reply_markup=request_response.reply_markup))) \
                         .message_id
 
-                # Multiple photos (send media group + markup as seperate messages)
                 else:
-                    # Collect media group
-                    media_group = []
-                    for url in request_response.response:
-                        media_group.append(InputMediaPhoto(media=url))
-
+                    media_group = [InputMediaPhoto(media=url) for url in request_response.response]
                     # Send it
                     media_group_message_id = (await (telegram.Bot(config["telegram"]["api_key"]).sendMediaGroup(
                         chat_id=request_response.user["user_id"],
@@ -234,11 +236,9 @@ async def send_message_async(config: dict, messages: List[Dict],
                                                                    reply_markup=request_response.reply_markup,
                                                                    edit_message_id=request_response.message_id)
 
-            # Send message as text
             else:
                 await _send_text_async_split(config, request_response, end)
 
-        # First or any other message (text only)
         else:
             # Get current time
             time_current = time.time()
@@ -264,7 +264,6 @@ async def send_message_async(config: dict, messages: List[Dict],
                 request_response.response_len_last = len(request_response.response.strip())
                 request_response.response_send_timestamp_last = time_current
 
-    # Error?
     except Exception as e:
         logging.warning("Error sending message!", exc_info=e)
 
@@ -351,37 +350,34 @@ async def send_reply(api_key: str, chat_id: int, message: str, reply_to_message_
     :return: message_id if sent correctly, or None if not
     """
     # Send as markdown
-    if markdown:
-        # MARKDOWN_MODE_ESCAPE_NONE
+    if not markdown:
+        return await _send_parse(api_key, chat_id, message, reply_to_message_id,
+                                 MARKDOWN_MODE_NO_MARKDOWN, reply_markup, edit_message_id)
+    # MARKDOWN_MODE_ESCAPE_NONE
+    message_id = await _send_parse(api_key, chat_id, message, reply_to_message_id,
+                                   MARKDOWN_MODE_ESCAPE_NONE, reply_markup, edit_message_id)
+    if message_id is None or message_id < 0:
+        # MARKDOWN_MODE_ESCAPE_MINIMUM
         message_id = await _send_parse(api_key, chat_id, message, reply_to_message_id,
-                                       MARKDOWN_MODE_ESCAPE_NONE, reply_markup, edit_message_id)
+                                       MARKDOWN_MODE_ESCAPE_MINIMUM, reply_markup, edit_message_id)
         if message_id is None or message_id < 0:
-            # MARKDOWN_MODE_ESCAPE_MINIMUM
+            # MARKDOWN_MODE_ESCAPE_ALL
             message_id = await _send_parse(api_key, chat_id, message, reply_to_message_id,
-                                           MARKDOWN_MODE_ESCAPE_MINIMUM, reply_markup, edit_message_id)
+                                           MARKDOWN_MODE_ESCAPE_ALL, reply_markup, edit_message_id)
             if message_id is None or message_id < 0:
-                # MARKDOWN_MODE_ESCAPE_ALL
+                # MARKDOWN_MODE_NO_MARKDOWN
                 message_id = await _send_parse(api_key, chat_id, message, reply_to_message_id,
-                                               MARKDOWN_MODE_ESCAPE_ALL, reply_markup, edit_message_id)
+                                               MARKDOWN_MODE_NO_MARKDOWN, reply_markup, edit_message_id)
                 if message_id is None or message_id < 0:
-                    # MARKDOWN_MODE_NO_MARKDOWN
-                    message_id = await _send_parse(api_key, chat_id, message, reply_to_message_id,
-                                                   MARKDOWN_MODE_NO_MARKDOWN, reply_markup, edit_message_id)
-                    if message_id is None or message_id < 0:
-                        raise Exception("Unable to send message in any markdown escape mode!")
-                    else:
-                        return message_id
+                    raise Exception("Unable to send message in any markdown escape mode!")
                 else:
                     return message_id
             else:
                 return message_id
         else:
             return message_id
-
-    # Markdown parsing is disabled - send as plain message
     else:
-        return await _send_parse(api_key, chat_id, message, reply_to_message_id,
-                                 MARKDOWN_MODE_NO_MARKDOWN, reply_markup, edit_message_id)
+        return message_id
 
 
 async def _send_parse(api_key: str, chat_id: int, message: str, reply_to_message_id: int | None, escape_mode: int,
@@ -439,7 +435,10 @@ async def _send_parse(api_key: str, chat_id: int, message: str, reply_to_message
             logging.warning("Error sending reply with escape_mode {0}: {1}\t You can ignore this message"
                             .format(escape_mode, str(e)))
         else:
-            logging.error("Error sending reply with escape_mode {}!".format(escape_mode), exc_info=e)
+            logging.error(
+                f"Error sending reply with escape_mode {escape_mode}!",
+                exc_info=e,
+            )
         return None
 
 
@@ -493,17 +492,13 @@ def clear_conversation_process(logging_queue: multiprocessing.Queue, str_or_exce
         # Clear ChatGPT
         if request_type == RequestResponseContainer.REQUEST_TYPE_CHATGPT:
             requested_module = messages[lang]["modules"][0]
-            if not chatgpt_module.processing_flag.value:
-                proxy_ = None
-                if proxy and config["chatgpt"]["proxy"] == "auto":
-                    proxy_ = proxy
-                chatgpt_module.initialize(proxy_)
-                chatgpt_module.clear_conversation_for_user(users_handler, user)
-                chatgpt_module.exit()
-            else:
+            if chatgpt_module.processing_flag.value:
                 raise Exception("The module is busy. Please try again later!")
 
-        # Clear EdgeGPT
+            proxy_ = proxy if proxy and config["chatgpt"]["proxy"] == "auto" else None
+            chatgpt_module.initialize(proxy_)
+            chatgpt_module.clear_conversation_for_user(users_handler, user)
+            chatgpt_module.exit()
         elif request_type == RequestResponseContainer.REQUEST_TYPE_EDGEGPT:
             requested_module = messages[lang]["modules"][2]
             if not edgegpt_module.processing_flag.value:
@@ -511,7 +506,6 @@ def clear_conversation_process(logging_queue: multiprocessing.Queue, str_or_exce
             else:
                 raise Exception("The module is busy. Please try again later!")
 
-        # Clear Bard
         elif request_type == RequestResponseContainer.REQUEST_TYPE_BARD:
             requested_module = messages[lang]["modules"][3]
             if not bard_module.processing_flag.value:
@@ -519,14 +513,12 @@ def clear_conversation_process(logging_queue: multiprocessing.Queue, str_or_exce
             else:
                 raise Exception("The module is busy. Please try again later!")
 
-        # Wrong module
         else:
-            raise Exception("Wrong module type: {}".format(request_type))
+            raise Exception(f"Wrong module type: {request_type}")
 
         # Return module name if everything is OK
         str_or_exception_queue.put(requested_module)
 
-    # Return exception
     except Exception as e:
         str_or_exception_queue.put(e)
 
@@ -669,33 +661,9 @@ class BotHandler:
                 lang = UsersHandler.get_key_or_none(user, "lang", 0)
 
                 # Regenerate request
-                if action == "regenerate":
-                    # Get last message ID
-                    reply_message_id_last = UsersHandler.get_key_or_none(user, "reply_message_id_last")
+                if action == "clear":
+                    await self.bot_command_clear_raw(request_type, user, context)
 
-                    # Check if it is last message
-                    if reply_message_id_last and reply_message_id_last == reply_message_id:
-                        # Get request
-                        request = UsersHandler.get_key_or_none(user, "request_last")
-
-                        # Check if we have the last request
-                        if request:
-                            # Ask
-                            await self.bot_command_or_message_request_raw(request_type,
-                                                                          request,
-                                                                          user,
-                                                                          reply_message_id_last,
-                                                                          context)
-
-                        # No or empty request
-                        else:
-                            await _send_safe(user["user_id"], self.messages[lang]["regenerate_error_empty"], context)
-
-                    # Message is not the last one
-                    else:
-                        await _send_safe(user["user_id"], self.messages[lang]["regenerate_error_not_last"], context)
-
-                # Continue generating (for ChatGPT)
                 elif action == "continue":
                     # Get last message ID
                     reply_message_id_last = UsersHandler.get_key_or_none(user, "reply_message_id_last")
@@ -713,7 +681,34 @@ class BotHandler:
                     else:
                         await _send_safe(user["user_id"], self.messages[lang]["continue_error_not_last"], context)
 
-                # Stop generating
+                elif action == "lang":
+                    await self.bot_command_lang_raw(request_type, user, context)
+
+                elif action == "module":
+                    await self.bot_command_module_raw(request_type, user, context)
+
+                elif action == "regenerate":
+                    # Get last message ID
+                    reply_message_id_last = UsersHandler.get_key_or_none(user, "reply_message_id_last")
+
+                    # Check if it is last message
+                    if reply_message_id_last and reply_message_id_last == reply_message_id:
+                        if request := UsersHandler.get_key_or_none(
+                            user, "request_last"
+                        ):
+                            # Ask
+                            await self.bot_command_or_message_request_raw(request_type,
+                                                                          request,
+                                                                          user,
+                                                                          reply_message_id_last,
+                                                                          context)
+
+                        else:
+                            await _send_safe(user["user_id"], self.messages[lang]["regenerate_error_empty"], context)
+
+                    else:
+                        await _send_safe(user["user_id"], self.messages[lang]["regenerate_error_not_last"], context)
+
                 elif action == "stop":
                     # Get last message ID
                     reply_message_id_last = UsersHandler.get_key_or_none(user, "reply_message_id_last")
@@ -728,9 +723,9 @@ class BotHandler:
                         aborted = False
                         for container in queue_list:
                             if container.user["user_id"] == user["user_id"] \
-                                    and container.reply_message_id == reply_message_id_last:
+                                        and container.reply_message_id == reply_message_id_last:
                                 # Change state to aborted
-                                logging.info("Requested container {} abort".format(container.id))
+                                logging.info(f"Requested container {container.id} abort")
                                 container.processing_state = RequestResponseContainer.PROCESSING_STATE_CANCEL
                                 QueueHandler.put_container_to_queue(self.queue_handler.request_response_queue,
                                                                     self.queue_handler.lock, container)
@@ -741,27 +736,12 @@ class BotHandler:
                         if not aborted:
                             await _send_safe(user["user_id"], self.messages[lang]["stop_error"], context)
 
-                    # Message is not the last one
                     else:
                         await _send_safe(user["user_id"], self.messages[lang]["stop_error_not_last"], context)
 
-                # Clear chat
-                elif action == "clear":
-                    await self.bot_command_clear_raw(request_type, user, context)
-
-                # Change module
-                elif action == "module":
-                    await self.bot_command_module_raw(request_type, user, context)
-
-                # Change style
                 elif action == "style":
                     await self.bot_command_style_raw(reply_message_id, user, context)
 
-                # Change language
-                elif action == "lang":
-                    await self.bot_command_lang_raw(request_type, user, context)
-
-        # Error parsing data?
         except Exception as e:
             logging.error("Query callback error!", exc_info=e)
 
@@ -799,7 +779,7 @@ class BotHandler:
         await _send_safe(user["user_id"], self.messages[lang]["broadcast_initiated"], context)
 
         # Get message
-        broadcast_message = str(" ".join(context.args)).strip()
+        broadcast_message = " ".join(context.args).strip()
 
         # Get list of users
         users = self.users_handler.read_users()
@@ -826,7 +806,10 @@ class BotHandler:
                     # Wait some time
                     time.sleep(self.config["telegram"]["broadcast_delay_per_user_seconds"])
                 except Exception as e:
-                    logging.warning("Error sending message to {}!".format(broadcast_user["user_id"]), exc_info=e)
+                    logging.warning(
+                        f'Error sending message to {broadcast_user["user_id"]}!',
+                        exc_info=e,
+                    )
 
         # Send final message
         await _send_safe(user["user_id"],
@@ -880,7 +863,7 @@ class BotHandler:
         # Get ban reason
         reason = self.messages[lang]["ban_reason_default"].replace("\\n", "\n")
         if len(context.args) > 1:
-            reason = str(" ".join(context.args[1:])).strip()
+            reason = " ".join(context.args[1:]).strip()
 
         # Get user to ban
         banned_user = self.users_handler.get_user_by_id(ban_user_id)
@@ -941,17 +924,9 @@ class BotHandler:
         message = ""
         for user_info in users:
             # Banned?
-            if user_info["banned"]:
-                message += "B "
-            else:
-                message += "  "
-
+            message += "B " if user_info["banned"] else "  "
             # Admin?
-            if user_info["admin"]:
-                message += "A "
-            else:
-                message += "  "
-
+            message += "A " if user_info["admin"] else "  "
             # Language
             message += self.messages[UsersHandler.get_key_or_none(user_info, "lang", 0)]["language_icon"] + " "
 
@@ -1080,11 +1055,9 @@ class BotHandler:
         if len(queue_list) == 0:
             await _send_safe(user["user_id"], self.messages[lang]["queue_empty"], context)
 
-        # Send queue content
         else:
             message = ""
-            container_counter = 1
-            for container in queue_list:
+            for container_counter, container in enumerate(queue_list, start=1):
                 text_to = RequestResponseContainer.REQUEST_NAMES[container.request_type]
                 request_status = RequestResponseContainer.PROCESSING_STATE_NAMES[container.processing_state]
                 message_ = "{0} ({1}). {2} ({3}) to {4} ({5}): {6}\n".format(container_counter,
@@ -1095,8 +1068,6 @@ class BotHandler:
                                                                              request_status,
                                                                              container.request)
                 message += message_
-                container_counter += 1
-
             # Send queue content
             await _send_safe(user["user_id"], message, context)
 
@@ -1169,7 +1140,7 @@ class BotHandler:
                 buttons.append(InlineKeyboardButton(self.messages[lang]["modules"][3], callback_data="3_clear_0"))
 
             # If at least one module is available
-            if len(buttons) > 0:
+            if buttons:
                 await _send_safe(user["user_id"], self.messages[lang]["clear_select_module"], context,
                                  reply_markup=InlineKeyboardMarkup(build_menu(buttons)))
             return
@@ -1346,7 +1317,6 @@ class BotHandler:
         if request_type >= 0:
             await self.bot_command_or_message_request_raw(request_type, "", user, -1, context)
 
-        # Suggest module
         else:
             buttons = []
             if self.config["modules"]["chatgpt"]:
@@ -1364,7 +1334,7 @@ class BotHandler:
             current_module = self.messages[lang]["modules"][user["module"]]
 
             # If at least one module is available
-            if len(buttons) > 0:
+            if buttons:
                 await _send_safe(user["user_id"], self.messages[lang]["module_select_module"].format(current_module),
                                  context,
                                  reply_markup=InlineKeyboardMarkup(build_menu(buttons)))
@@ -1404,8 +1374,12 @@ class BotHandler:
             buttons = []
             language_select_text = ""
             for i in range(len(self.messages)):
-                buttons.append(InlineKeyboardButton(self.messages[i]["language_name"],
-                                                    callback_data="{}_lang_0".format(i)))
+                buttons.append(
+                    InlineKeyboardButton(
+                        self.messages[i]["language_name"],
+                        callback_data=f"{i}_lang_0",
+                    )
+                )
                 language_select_text += self.messages[i]["language_select"] + "\n"
 
             await _send_safe(user["user_id"], language_select_text, context,
@@ -1481,10 +1455,7 @@ class BotHandler:
 
         # Extract request
         if request_type >= 0:
-            if context.args:
-                request_message = str(" ".join(context.args)).strip()
-            else:
-                request_message = ""
+            request_message = " ".join(context.args).strip() if context.args else ""
         else:
             request_message = update.message.text.strip()
 
