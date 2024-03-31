@@ -16,6 +16,14 @@
         <a href="https://soundcloud.com/f3rni"><img alt="SoundCloud" src="https://img.shields.io/badge/-SoundCloud-orange" ></a>
     </p>
 </div>
+<div style="width:100%;text-align:center;">
+    <p align="center">
+        <a href=""><img alt="" src="https://img.shields.io/aur/last-modified/gpt-telegramus?logo=ArchLinux
+" ></a>
+        <a href=""><img alt="" src="https://img.shields.io/aur/version/gpt-telegramus?logo=ArchLinux" ></a>
+        <a href=""><img alt="" src="https://img.shields.io/aur/maintainer/gpt-telegramus?logo=ArchLinux" ></a>
+    </p>
+</div>
 
 ![Project banner](banner.png)
 
