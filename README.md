@@ -32,11 +32,13 @@
 
 > 😔 Currently, GPT-Telegramus doesn't have paid ChatGPT and DALL-E support
 >
-> 📈 GPT-Telegramus v5 is an updated and highly refactored version of the old GPT-Telegramus. Updates coming soon....
+> 📈 GPT-Telegramus v5 is an updated and highly refactored version of the old GPT-Telegramus
 >
 > 📄 Documentation is also under development! Consider reading docstring for now
 >
 > 🐛 If you find a **bug** in GPT-Telegramus, please create an Issue
+>
+> p.s. Due to my studies, I don't have much time to work on the project 😔
 
 ----------
 
@@ -66,6 +68,15 @@
 - 💜 AnthroAsja - *Belarusian language*
 - 💜 Anonymous Samurai - *Ukrainian language*
 - 💜 Dunya Jafari - *Persian language*
+
+----------
+
+## 📨 Project channel and demo
+
+- You can join official project's Telegram channel <https://t.me/vestnik_labasera>
+- Also you can test GPT-Telegramus using official bot <https://t.me/labasyor3000_bot>
+
+⚠️ Please do not overload the bot and use it only as a demo version
 
 ----------
 
@@ -110,9 +121,13 @@ See **🐧 Running as service on linux**, **🍓 Running on Raspberry Pi (ARM)**
   - Supports conversation style `/style`
   - Stream response support
   - Chat history support
-  - Web-browsing (probably) and sources support
-  - Unfortunately, it can't accept images as input yet, nor can it generate them. Please use **Microsoft Copilot Designer** to generate images
-- **Microsoft Copilot Designer**
+  - Web-browsing (probably) and sources (attributions) support
+  - Accepts image requests (for **lmao_ms_copilot** only)
+  - Send generated images (for **lmao_ms_copilot** only)
+  - Suggestions (for **lmao_ms_copilot** only)
+  - See <https://github.com/F33RNI/LlM-Api-Open> for more info
+  - **NOTE:** Non-LMAO API (the old one `ms_copilot`) is deprecated! Please use `lmao_ms_copilot` instead
+- *Microsoft Copilot Designer* (**DEPRECATED**)
   - Bing Image Generator. Used as a separate module due to issues with the EdgeGPT module
   - Free and unlimited
 - **Gemini**
@@ -239,6 +254,7 @@ See **🐧 Running as service on linux**, **🍓 Running on Raspberry Pi (ARM)**
 - 🇺🇦 Українська
 - فارسی 🇮🇷
 - 🇪🇸 Español
+- 🇻🇳 Vietnamese
 
 You can add **a new language**. For that:
 
@@ -291,10 +307,9 @@ You can enable and configure data collection in `config.json` in `data_collectin
 
 ## 📝 TODO
 
-- Official (and paid) ChatGPT API
-- Official DALL-E API
-- Microsoft Copilot as part of LMAO API
-- Some free GPT-4 model
+- Paid version of ChatGPT
+- DALL-E (from OpenAI)
+- Some other LLMs (and maybe some free GPT-4 model)
 
 ----------
 

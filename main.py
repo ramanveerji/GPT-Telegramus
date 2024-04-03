@@ -37,7 +37,7 @@ import module_wrapper_global
 
 # Default config file
 CONFIG_FILE = "config.json"
-CONFIG_COMPATIBLE_VERSIONS = [5]
+CONFIG_COMPATIBLE_VERSIONS = [5, 6]
 
 
 def load_and_parse_config(config_file: str) -> Dict:

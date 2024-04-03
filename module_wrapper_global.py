@@ -43,10 +43,10 @@ from lmao_process_loop import LMAO_LOOP_DELAY, lmao_process_loop
 # List of available modules (their names)
 # LlM-Api-Open (LMAO) modules should start with lmao_
 # See <https://github.com/F33RNI/LlM-Api-Open> for more info
-MODULES = ["lmao_chatgpt", "chatgpt", "dalle", "ms_copilot", "ms_copilot_designer", "gemini"]
+MODULES = ["lmao_chatgpt", "lmao_ms_copilot", "chatgpt", "dalle", "ms_copilot", "ms_copilot_designer", "gemini"]
 
 # Names of modules with conversation history (clearable)
-MODULES_WITH_HISTORY = ["lmao_chatgpt", "chatgpt", "ms_copilot", "gemini"]
+MODULES_WITH_HISTORY = ["lmao_chatgpt", "lmao_ms_copilot", "chatgpt", "ms_copilot", "gemini"]
 
 # Maximum time (in seconds) to wait for LMAO module to close before killing it's process
 _LMAO_STOP_TIMEOUT = 10

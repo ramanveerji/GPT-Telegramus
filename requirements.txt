@@ -1,6 +1,6 @@
 git+https://github.com/F33RNI/EdgeGPT@main#egg=EdgeGPT
 git+https://github.com/F33RNI/md2tgmd.git@main
-git+https://github.com/F33RNI/LlM-Api-Open.git@main
+llm-api-open~=2.1
 revChatGPT==6.8.6
 python-telegram-bot==20.3
 openai>=0.26.4

@@ -170,14 +170,26 @@ class UsersHandler:
                 if module == 1:
                     return "dalle"
                 if module == 2:
-                    return "ms_copilot"
+                    return "lmao_ms_copilot" if "lmao_ms_copilot" in self.config else "ms_copilot"
                 if module == 3:
                     return "gemini"
                 if module == 4:
-                    return "ms_copilot_image_creator"
+                    return "lmao_ms_copilot" if "lmao_ms_copilot" in self.config else "ms_copilot_image_creator"
                 if module == 5:
                     return "gemini"
                 return self.config.get("modules").get("default", default_value)
+
+            # Fix MS Copilot
+            if module == "ms_copilot" and "lmao_ms_copilot" in self.config:
+                module = "lmao_ms_copilot"
+
+            # Fallback to a legacy API
+            elif module == "lmao_ms_copilot" and "lmao_ms_copilot" not in self.config and "ms_copilot" in self.config:
+                module = "ms_copilot"
+
+            # Fix MS Copilot designer
+            if module == "ms_copilot_image_creator" and "lmao_ms_copilot" in self.config:
+                module = "lmao_ms_copilot"
 
             return default_value if module is None else module
 

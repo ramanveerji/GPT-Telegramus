@@ -1,15 +1,15 @@
 {
     "__comment01__": "Version of config file. Please don't change it",
-    "config_version": 5,
+    "config_version": 6,
 
     "__comment02__": "General config of enabled modules",
-    "__comment03__": "Available modules: lmao_chatgpt, ms_copilot, ms_copilot_designer, gemini",
+    "__comment03__": "Available modules: lmao_chatgpt, lmao_ms_copilot, ms_copilot, ms_copilot_designer, gemini",
+    "__comment04__": "NOTE: ms_copilot and ms_copilot_designer modules are DEPRECATED and will be removed soon",
     "modules": {
         "__comment01__": "Enabled modules",
         "enabled": [
             "lmao_chatgpt",
-            "ms_copilot",
-            "ms_copilot_designer",
+            "lmao_ms_copilot",
             "gemini"
         ],
 
@@ -17,7 +17,7 @@
         "default": "lmao_chatgpt"
     },
 
-    "__comment04__": "Paths to files and directories",
+    "__comment05__": "Paths to files and directories",
     "files": {
         "module_configs_dir": "module_configs",
         "users_database": "users.json",
@@ -27,7 +27,7 @@
         "messages_dir": "langs"
     },
 
-    "__comment05__": "Telegram bot config",
+    "__comment06__": "Telegram bot config",
     "telegram": {
         "__comment01__": "Provide your bot api key from <https://t.me/BotFather>",
         "api_key": "",
@@ -100,7 +100,7 @@
         ]
     },
 
-    "__comment06__": "Save all requests and responses to the files",
+    "__comment07__": "Save all requests and responses to the files",
     "data_collecting": {
         "__comment01__": "Set true to automatically save all user's requests and responses into data_collecting_dir",
         "__comment02__": "NOTE: You should notify users if it's enabled!",

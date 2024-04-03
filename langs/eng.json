@@ -21,8 +21,11 @@
     "stop_error_not_last": "❌ Error! Can only abort the last request!",
     "stop_error": "❌ Error! Can not stop generating!",
     "response_link_format": "\n📄 {source_name}: {link}",
+    "suggestion_format": "💡 {suggestion}",
+    "suggestion_error": "❌ It is possible to use the suggested request only from the last message!",
     "users_read_error": "❌ Error reading or parsing list of users!",
     "users_admin": "Banned? Admin? Language Module ID Name - Requests\n\n{users_data}",
+    "users_total_stats": "Users: {users_num}, banned {banned_num}, admins: {admins_num}",
     "restarting": "🙏 Restarting in progress...\nPlease wait",
     "restarting_done": "{reload_logs}\n✅ The restart is completed",
     "chat_cleared": "✅ Chat history cleared for {module_name}",
@@ -58,6 +61,10 @@
         "lmao_chatgpt": {
             "icon": "💬",
             "name": "ChatGPT (LMAO API)"
+        },
+        "lmao_ms_copilot": {
+            "icon": "🟦",
+            "name": "MS Copilot (LMAO API)"
         },
         "chatgpt": {
             "icon": "💬",

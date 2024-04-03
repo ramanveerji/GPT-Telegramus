@@ -18,7 +18,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
-from typing import List
+from typing import List, Tuple
 
 from telegram import InlineKeyboardMarkup
 
@@ -47,6 +47,7 @@ class RequestResponseContainer:
         request_timestamp: str or None = None,
         response_text: str or None = None,
         response_images: List[str] or None = None,
+        response_suggestions: List[Tuple[str, str]] or None = None,
         response_timestamp: str or None = None,
         response_send_timestamp_last: float = 0.0,
         processing_state: int = PROCESSING_STATE_IN_QUEUE,
@@ -65,6 +66,7 @@ class RequestResponseContainer:
             request_timestamp (str or None, optional): formatted time of the request
             response_text (str or None, optional): module's response text
             response_images (List[str] or None, optional): links to images of module's response
+            response_suggestions (List[Tuple[str, str]] or None, optional): list of suggested requests (ID, text)
             response_timestamp (str or None, optional): formatted time of final response
             response_send_timestamp_last (float, optional): timestamp of last response (for editing aka live replying)
             processing_state (int, optional): state of container. Defaults to PROCESSING_STATE_IN_QUEUE
@@ -88,6 +90,10 @@ class RequestResponseContainer:
         if response_images is not None:
             for response_image in response_images:
                 self.response_images.append(response_image)
+        self.response_suggestions = []
+        if response_suggestions is not None:
+            for response_suggestion in response_suggestions:
+                self.response_suggestions.append(response_suggestion)
         self.response_timestamp = response_timestamp
 
         # Other args

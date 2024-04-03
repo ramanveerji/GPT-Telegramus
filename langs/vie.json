@@ -21,8 +21,11 @@
     "stop_error_not_last": "❌ Lỗi! Chỉ có thể hủy bỏ yêu cầu cuối cùng!",
     "stop_error": "❌ Lỗi! Không thể dừng quá trình tạo ra!",
     "response_link_format": "\n📄 {source_name}: {link}",
+    "suggestion_format": "💡 {suggestion}",
+    "suggestion_error": "❌ Có thể sử dụng yêu cầu được đề xuất chỉ từ tin nhắn cuối cùng!",
     "users_read_error": "❌ Lỗi đọc hoặc phân tích cú pháp danh sách người dùng!",
     "users_admin": "Bị cấm? Quản trị viên? Mô-đun ngôn ngữ ID Tên - Yêu cầu\n\n{users_data}",
+    "users_total_stats": "Người dùng: {users_num}, bị cấm: {banned_num}, quản trị viên: {admins_num}",
     "restarting": "🙏 Đang khởi động lại...\nVui lòng đợi",
     "restarting_done": "{reload_logs}\n✅ Khởi động lại đã hoàn thành",
     "chat_cleared": "✅ Lịch sử trò chuyện đã được xóa cho {module_name}",
@@ -58,6 +61,10 @@
         "lmao_chatgpt": {
             "icon": "💬",
             "name": "ChatGPT (LMAO API)"
+        },
+        "lmao_ms_copilot": {
+            "icon": "🟦",
+            "name": "MS Copilot (LMAO API)"
         },
         "chatgpt": {
             "icon": "💬",

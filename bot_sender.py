@@ -219,7 +219,7 @@ def build_markup(
         buttons.append(button_clear)
 
     # Add change style button for MS Copilot
-    if request_response.module_name == "ms_copilot":
+    if request_response.module_name == "ms_copilot" or request_response.module_name == "lmao_ms_copilot":
         button_style = InlineKeyboardButton(
             messages_.get_message("button_style_change", user_id=user_id),
             callback_data=f"style||{request_response.reply_message_id}",
@@ -232,6 +232,16 @@ def build_markup(
         callback_data=f"module||{request_response.reply_message_id}",
     )
     buttons.append(button_module)
+
+    # Add suggestions (their IDs must be saved into user database)
+    if request_response.response_suggestions and len(request_response.response_suggestions) != 0:
+        for suggestion_id, suggestion in request_response.response_suggestions:
+            data = f"{request_response.module_name}_{suggestion_id}"
+            button_style = InlineKeyboardButton(
+                messages_.get_message("suggestion_format", user_id=user_id).format(suggestion=suggestion),
+                callback_data=f"suggestion|{data}|{request_response.reply_message_id}",
+            )
+            buttons.append(button_style)
 
     return InlineKeyboardMarkup(build_menu(buttons, n_cols=2))
 

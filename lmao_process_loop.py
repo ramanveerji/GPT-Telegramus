@@ -21,6 +21,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 import logging
 import multiprocessing
 import queue
+import random
+import string
 import threading
 import time
 from typing import Dict
@@ -122,6 +124,11 @@ def lmao_process_loop(
             except Exception as e:
                 logging.error("_lmao_stop_stream_loop error", exc_info=e)
 
+            # Read module's status
+            finally:
+                with lmao_module_status.get_lock():
+                    lmao_module_status.value = module.status
+
         # Done
         logging.info("_lmao_stop_stream_loop finished")
 
@@ -161,8 +168,9 @@ def lmao_process_loop(
                 with lmao_module_status.get_lock():
                     lmao_module_status.value = STATUS_BUSY
 
-                # Currently LMAO API can only handle text requests
+                # Extract request
                 prompt_text = request_response.request_text
+                prompt_image = request_response.request_image
 
                 # Check prompt
                 if not prompt_text:
@@ -171,16 +179,63 @@ def lmao_process_loop(
                     # Extract conversation ID
                     conversation_id = users_handler_.get_key(request_response.user_id, name + "_conversation_id")
 
-                    # Build request
                     module_request = {"prompt": prompt_text, "convert_to_markdown": True}
+
+                    # Extract style (for lmao_ms_copilot only)
+                    if name == "lmao_ms_copilot":
+                        style = users_handler_.get_key(request_response.user_id, "ms_copilot_style", "balanced")
+                        module_request["style"] = style
+
+                    # Add image and conversation ID
+                    if prompt_image is not None:
+                        module_request["image"] = prompt_image
                     if conversation_id:
                         module_request["conversation_id"] = conversation_id
+
+                    # Reset suggestions
+                    users_handler_.set_key(request_response.user_id, "suggestions", [])
 
                     # Ask and read stream
                     for response in module.ask(module_request):
                         finished = response.get("finished")
                         conversation_id = response.get("conversation_id")
                         request_response.response_text = response.get("response")
+
+                        images = response.get("images")
+                        if images is not None:
+                            request_response.response_images = images[:]
+
+                        # Format and add attributions
+                        attributions = response.get("attributions")
+                        if attributions is not None and len(attributions) != 0:
+                            response_link_format = messages_.get_message(
+                                "response_link_format", user_id=request_response.user_id
+                            )
+                            request_response.response_text += "\n"
+                            for i, attribution in enumerate(attributions):
+                                request_response.response_text += response_link_format.format(
+                                    source_name=str(i + 1), link=attribution.get("url", "")
+                                )
+
+                        # Suggestions must be stored as tuples with unique ID for reply-markup
+                        if finished:
+                            suggestions = response.get("suggestions")
+                            if suggestions is not None:
+                                request_response.response_suggestions = []
+                                for suggestion in suggestions:
+                                    if not suggestion or len(suggestion) < 1:
+                                        continue
+                                    id_ = "".join(
+                                        random.choices(
+                                            string.ascii_uppercase + string.ascii_lowercase + string.digits, k=8
+                                        )
+                                    )
+                                    request_response.response_suggestions.append((id_, suggestion))
+                                users_handler_.set_key(
+                                    request_response.user_id,
+                                    "suggestions",
+                                    request_response.response_suggestions,
+                                )
 
                         # Read module's status
                         with lmao_module_status.get_lock():
@@ -227,6 +282,9 @@ def lmao_process_loop(
                 except Exception as e:
                     logging.error(f"Error deleting conversation for {name}", exc_info=e)
                     lmao_delete_conversation_response_queue.put(e)
+                finally:
+                    with lmao_module_status.get_lock():
+                        lmao_module_status.value = module.status
 
         # Catch process interrupts just in case
         except (SystemExit, KeyboardInterrupt):
@@ -237,6 +295,11 @@ def lmao_process_loop(
         except Exception as e:
             logging.error(f"{name} error", exc_info=e)
             lmao_exceptions_queue.put(e)
+
+        # Read module's status
+        finally:
+            with lmao_module_status.get_lock():
+                lmao_module_status.value = module.status
 
     # Wait for stop handler to finish
     if stop_handler_thread and stop_handler_thread.is_alive():
@@ -255,6 +318,10 @@ def lmao_process_loop(
         logging.info(f"{name} closing finished")
     except Exception as e:
         logging.error(f"Error closing {name}", exc_info=e)
+
+    # Read module's status
+    with lmao_module_status.get_lock():
+        lmao_module_status.value = module.status
 
     # Done
     with lmao_process_running.get_lock():
