@@ -23,6 +23,13 @@
         <a href="https://aur.archlinux.org/packages/gpt-telegramus"><img alt="" src="https://img.shields.io/aur/maintainer/gpt-telegramus?logo=ArchLinux" ></a>
     </p>
 </div>
+<div style="width:100%;text-align:center;">
+    <p align="center">
+        <a href="https://aur.archlinux.org/packages/gpt-telegramus-git"><img alt="" src="https://img.shields.io/aur/last-modified/gpt-telegramus-git?logo=ArchLinux" ></a>
+        <a href="https://aur.archlinux.org/packages/gpt-telegramus-git"><img alt="" src="https://img.shields.io/aur/version/gpt-telegramus-git?logo=ArchLinux" ></a>
+        <a href="https://aur.archlinux.org/packages/gpt-telegramus-git"><img alt="" src="https://img.shields.io/aur/maintainer/gpt-telegramus-git?logo=ArchLinux" ></a>
+    </p>
+</div>
 
 ![Project banner](banner.png)
 
