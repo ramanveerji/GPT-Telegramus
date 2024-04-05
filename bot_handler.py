@@ -1515,8 +1515,16 @@ class BotHandler:
             admins_num=users_admin_counter,
         )
 
-        # Send as markdown
-        await bot_sender.send_reply(self.config.get("telegram").get("api_key"), user_id, message, markdown=True)
+        # Send message with auto-splitting
+        request_response = request_response_container.RequestResponseContainer(
+            user_id=user_id,
+            reply_message_id=update.effective_message.id,
+            module_name="",
+            response_text=message,
+        )
+        await bot_sender.send_message_async(
+            self.config.get("telegram"), self.messages, request_response, end=True, plain_text=True
+        )
 
     async def bot_command_chatid(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """/chatid command callback
