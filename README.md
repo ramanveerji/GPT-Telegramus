@@ -61,6 +61,7 @@
 - 💜 AnthroAsja - *Belarusian language*
 - 💜 Anonymous Samurai - *Ukrainian language*
 - 💜 Dunya Jafari - *Persian language*
+- 💜 [Dedy Rudney](https://github.com/rudney5000) - *French language*
 
 ----------
 
@@ -248,6 +249,7 @@ See **🐧 Running as service on linux**, **🍓 Running on Raspberry Pi (ARM)**
 - فارسی 🇮🇷
 - 🇪🇸 Español
 - 🇻🇳 Vietnamese
+- 🇫🇷 Français
 
 You can add **a new language**. For that:
 
