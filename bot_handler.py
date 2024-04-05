@@ -1240,13 +1240,18 @@ class BotHandler:
             except Exception as e:
                 logging.warning(f"Error sending message to {broadcast_user_id}", exc_info=e)
 
-        # Send final message with list of users
-        await _send_safe(
-            user_id,
-            self.messages.get_message("broadcast_done", lang_id=lang_id).format(
-                broadcast_ok_users="\n".join(broadcast_ok_users)
-            ),
-            context,
+        # Send list of users with auto-splitting
+        message = self.messages.get_message("broadcast_done", lang_id=lang_id).format(
+            broadcast_ok_users="\n".join(broadcast_ok_users)
+        )
+        request_response = request_response_container.RequestResponseContainer(
+            user_id=user_id,
+            reply_message_id=update.effective_message.id,
+            module_name="",
+            response_text=message,
+        )
+        await bot_sender.send_message_async(
+            self.config.get("telegram"), self.messages, request_response, end=True, plain_text=True
         )
 
     async def bot_command_module(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1515,8 +1520,16 @@ class BotHandler:
             admins_num=users_admin_counter,
         )
 
-        # Send as markdown
-        await bot_sender.send_reply(self.config.get("telegram").get("api_key"), user_id, message, markdown=True)
+        # Send message with auto-splitting
+        request_response = request_response_container.RequestResponseContainer(
+            user_id=user_id,
+            reply_message_id=update.effective_message.id,
+            module_name="",
+            response_text=message,
+        )
+        await bot_sender.send_message_async(
+            self.config.get("telegram"), self.messages, request_response, end=True, plain_text=True
+        )
 
     async def bot_command_chatid(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """/chatid command callback
