@@ -151,19 +151,9 @@ class QueueHandler:
                     #################################################
                     # Check if we're not processing this request yet
                     if request_.processing_state == request_response_container.PROCESSING_STATE_IN_QUEUE:
-                        # Check if requested module's process is busy (only 1 request to each module as a time)
-                        module_is_busy = False
-                        for request__ in queue_list:
-                            if (
-                                request__.module_name == request_.module_name
-                                and request__.pid != 0
-                                and psutil.pid_exists(request__.pid)
-                            ):
-                                module_is_busy = True
-                                break
-
                         # Ignore until module is no longer busy
-                        if module_is_busy:
+                        module = self.modules.get(request_.module_name)
+                        if module is not None and module.is_busy():
                             continue
 
                         # Set initializing state

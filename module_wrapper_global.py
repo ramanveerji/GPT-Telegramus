@@ -28,6 +28,7 @@ from typing import Dict
 from lmao.module_wrapper import STATUS_NOT_INITIALIZED, STATUS_IDLE, STATUS_BUSY, STATUS_FAILED
 from lmao.module_wrapper import MODULES as LMAO_MODULES
 
+import psutil
 from google_ai_module import GoogleAIModule
 from ms_copilot_module import MSCopilotModule
 from ms_copilot_designer_module import MSCopilotDesignerModule
@@ -50,6 +51,9 @@ MODULES_WITH_HISTORY = ["lmao_chatgpt", "lmao_ms_copilot", "chatgpt", "ms_copilo
 
 # Maximum time (in seconds) to wait for LMAO module to close before killing it's process
 _LMAO_STOP_TIMEOUT = 10
+
+# How long to wait for module no become not busy
+_WAIT_FOR_IDLE_TIMEOUT = 10
 
 
 class ModuleWrapperGlobal:
@@ -83,6 +87,9 @@ class ModuleWrapperGlobal:
         self.logging_queue = logging_queue
 
         self.module = None
+
+        # PID for non-LMAO modules for is_busy() function
+        self._pid_value = multiprocessing.Value(c_int32, -1)
 
         ################
         # LMAO modules #
@@ -178,6 +185,25 @@ class ModuleWrapperGlobal:
         elif name == "ms_copilot_designer":
             self.module = MSCopilotDesignerModule(config, self.messages, self.users_handler)
 
+    def is_busy(self) -> bool:
+        """
+        Returns:
+            bool: True if current module is busy, False if not
+        """
+        # LMAO module is busy if it's status is not IDLE
+        if self.name.startswith("lmao_"):
+            with self._lmao_module_status.get_lock():
+                module_status = self._lmao_module_status.value
+            return module_status != STATUS_IDLE
+
+        # Other modules -> check for process_request() process
+        else:
+            with self._pid_value.get_lock():
+                pid = self._pid_value.value
+            if pid >= -1 and psutil.pid_exists(pid):
+                return True
+        return False
+
     def process_request(self, request_response: request_response_container.RequestResponseContainer) -> None:
         """Processes request
         This is called from separate queue process (non main)
@@ -188,6 +214,11 @@ class ModuleWrapperGlobal:
         Raises:
             Exception: process state / status or any other error
         """
+        # Set PID for is_busy() function
+        with self._pid_value.get_lock():
+            self._pid_value.value = multiprocessing.current_process().pid
+
+        # Extract user's language
         user_id = request_response.user_id
         lang_id = self.users_handler.get_key(user_id, "lang_id", "eng")
 
@@ -382,6 +413,15 @@ class ModuleWrapperGlobal:
         Raises:
             Exception: process state / status or any other error
         """
+        # Wait for module to become not busy or timeout
+        time_started = time.time()
+        while True:
+            if time.time() - time_started > _WAIT_FOR_IDLE_TIMEOUT:
+                raise Exception("Timeout waiting for module to become available. Please wait a bit and try again")
+            if not self.is_busy():
+                break
+            time.sleep(0.1)
+
         # Redirect to LMAO process and wait
         if self.name.startswith("lmao_"):
             # Check status
