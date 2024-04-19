@@ -1,5 +1,5 @@
 """
-Copyright (C) 2023-2024 Fern Lane, Hanssen
+Copyright (C) 2023-2024 Fern Lane
 
 This file is part of the GPT-Telegramus distribution
 (see <https://github.com/F33RNI/GPT-Telegramus>)
@@ -27,10 +27,8 @@ import ctypes
 import logging
 from typing import Dict
 
-# pylint: disable=no-name-in-module
-from google.generativeai.client import _ClientManager
-import google.generativeai as genai
-from google.ai.generativelanguage import Part, Content
+from groq import Groq
+import httpx
 
 import messages
 import users_handler
@@ -39,10 +37,10 @@ from bot_sender import send_message_async
 from request_response_container import RequestResponseContainer
 
 # Self name
-_NAME = "gemini"
+_NAME = "groq"
 
 
-class GoogleAIModule:
+class GroqModule:
     def __init__(
         self,
         config: Dict,
@@ -61,16 +59,14 @@ class GoogleAIModule:
         self.users_handler = users_handler_
 
         # All variables here must be multiprocessing
-        self.cancel_requested = multiprocessing.Value(ctypes.c_bool, False)
         self.processing_flag = multiprocessing.Value(ctypes.c_bool, False)
         self._last_request_time = multiprocessing.Value(ctypes.c_double, 0.0)
 
-        # Don't use this variables outside the module's process
+        # Don't use this variable outside the module's process
         self._model = None
-        self._vision_model = None
 
     def initialize(self) -> None:
-        """Initializes Google AI module using the generative language API: https://ai.google.dev/api
+        """Initializes Groq module using official Groq API: <https://console.groq.com/playground>
         This method must be called from another process
 
         Raises:
@@ -80,7 +76,6 @@ class GoogleAIModule:
         self._model = None
         try:
             self.processing_flag.value = False
-            self.cancel_requested.value = False
 
             # Get module's config
             module_config = self.config.get(_NAME)
@@ -88,37 +83,17 @@ class GoogleAIModule:
             # Use proxy
             if module_config.get("proxy") and module_config.get("proxy") != "auto":
                 proxy = module_config.get("proxy")
-                os.environ["http_proxy"] = proxy
-                logging.info(f"Initializing Google AI module with proxy {proxy}")
+                logging.info(f"Initializing Groq module with proxy {proxy}")
+                self._model = Groq(
+                    api_key=module_config.get("api_key"),
+                    base_url=module_config.get("base_url"),
+                    http_client=httpx.Client(proxies=proxy),
+                )
             else:
-                logging.info("Initializing Google AI module without proxy")
+                logging.info("Initializing Groq module without proxy")
+                self._model = Groq(api_key=module_config.get("api_key"), base_url=module_config.get("base_url"))
 
-            # Set up the model
-            generation_config = {
-                "temperature": module_config.get("temperature", 0.9),
-                "top_p": module_config.get("top_p", 1),
-                "top_k": module_config.get("top_k", 1),
-                "max_output_tokens": module_config.get("max_output_tokens", 2048),
-            }
-            safety_settings = []
-            self._model = genai.GenerativeModel(
-                model_name="gemini-pro",
-                generation_config=generation_config,
-                safety_settings=safety_settings,
-            )
-            self._vision_model = genai.GenerativeModel(
-                model_name="gemini-pro-vision",
-                generation_config=generation_config,
-                safety_settings=safety_settings,
-            )
-
-            client_manager = _ClientManager()
-            client_manager.configure(api_key=module_config.get("api_key"))
-            # pylint: disable=protected-access
-            self._model._client = client_manager.get_default_client("generative")
-            self._vision_model._client = client_manager.get_default_client("generative")
-            # pylint: enable=protected-access
-            logging.info("Google AI module initialized")
+            logging.info("Groq module initialized")
 
         # Reset module and re-raise the error
         except Exception as e:
@@ -126,7 +101,7 @@ class GoogleAIModule:
             raise e
 
     def process_request(self, request_response: RequestResponseContainer) -> None:
-        """Processes request to Google AI
+        """Processes request to Groq
 
         Args:
             request_response (RequestResponseContainer): container from the queue
@@ -136,13 +111,16 @@ class GoogleAIModule:
         """
         conversations_dir = self.config.get("files").get("conversations_dir")
         conversation_id = self.users_handler.get_key(request_response.user_id, f"{_NAME}_conversation_id")
+        model_name = self.users_handler.get_key(
+            request_response.user_id, f"{_NAME}_model", self.config.get(_NAME).get("model_default")
+        )
 
         # Check if we are initialized
         if self._model is None:
-            logging.error("Google AI module not initialized")
+            logging.error("Groq not initialized")
             request_response.response_text = self.messages.get_message(
                 "response_error", user_id=request_response.user_id
-            ).format(error_text="Google AI module not initialized")
+            ).format(error_text="Groq module not initialized")
             request_response.error = True
             self.processing_flag.value = False
             return
@@ -163,68 +141,35 @@ class GoogleAIModule:
                 time.sleep(self._last_request_time.value + module_config.get("user_cooldown_seconds") - time.time())
             self._last_request_time.value = time.time()
 
+            # Check model name (just in case)
+            if model_name not in self.config.get(_NAME).get("models"):
+                logging.warning(f"No model named {model_name}. Using default one")
+                model_name = self.config.get(_NAME).get("model_default")
+
             response = None
             conversation = []
 
-            # Gemini vision
-            if request_response.request_image:
-                logging.info("Asking Gemini...")
-                response = self._vision_model.generate_content(
-                    [
-                        Part(
-                            inline_data={
-                                "mime_type": "image/jpeg",
-                                "data": request_response.request_image,
-                            }
-                        ),
-                        Part(text=request_response.request_text),
-                    ],
-                    stream=True,
-                )
+            # Try to load conversation
+            conversation = _load_conversation(conversations_dir, conversation_id) or []
+            # Generate new random conversation ID
+            if conversation_id is None:
+                conversation_id = f"{_NAME}_{uuid.uuid4()}"
 
-            # Gemini (text)
-            else:
-                # Try to load conversation
-                conversation = _load_conversation(conversations_dir, conversation_id) or []
-                # Generate new random conversation ID
-                if conversation_id is None:
-                    conversation_id = f"{_NAME}_{uuid.uuid4()}"
+            conversation.append({"role": "user", "content": request_response.request_text})
 
-                conversation.append(
-                    Content.to_json(Content(role="user", parts=[Part(text=request_response.request_text)]))
-                )
+            logging.info("Asking Groq...")
+            response = self._model.chat.completions.create(messages=conversation, model=model_name)
 
-                logging.info("Asking Gemini...")
-                response = self._model.generate_content(
-                    [Content.from_json(content) for content in conversation],
-                    stream=True,
-                )
+            request_response.response_text = response.choices[0].message.content
+            role = response.choices[0].message.role
 
-            for chunk in response:
-                if self.cancel_requested.value:
-                    break
-                if len(chunk.parts) < 1 or "text" not in chunk.parts[0]:
-                    continue
+            # Try to save conversation
+            conversation.append({"role": role, "content": request_response.response_text})
+            if not _save_conversation(conversations_dir, conversation_id, conversation):
+                conversation_id = None
 
-                # Append and send response
-                request_response.response_text += chunk.parts[0].text
-                async_helper(
-                    send_message_async(self.config.get("telegram"), self.messages, request_response, end=False)
-                )
-
-            # Canceled, don't save conversation
-            if self.cancel_requested.value:
-                logging.info("Gemini module canceled")
-
-            # Save conversation if not gemini-vision
-            elif not request_response.request_image:
-                # Try to save conversation
-                conversation.append(Content.to_json(Content(role="model", parts=response.parts)))
-                if not _save_conversation(conversations_dir, conversation_id, conversation):
-                    conversation_id = None
-
-                # Save conversation ID
-                self.users_handler.set_key(request_response.user_id, f"{_NAME}_conversation_id", conversation_id)
+            # Save conversation ID
+            self.users_handler.set_key(request_response.user_id, f"{_NAME}_conversation_id", conversation_id)
 
         finally:
             self.processing_flag.value = False
@@ -262,7 +207,6 @@ def _load_conversation(conversations_dir, conversation_id):
             logging.info("conversation_id is None. Skipping loading")
             return None
 
-        # API type 3
         conversation_file = os.path.join(conversations_dir, conversation_id + ".json")
         if os.path.exists(conversation_file):
             # Load from json file

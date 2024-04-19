@@ -191,7 +191,15 @@ def main():
             config, messages_, users_handler_, logging_handler_.queue, None, modules
         )
         bot_handler_ = bot_handler.BotHandler(
-            config, args.config, messages_, users_handler_, logging_handler_.queue, queue_handler_, modules
+            config,
+            args.config,
+            messages_,
+            users_handler_,
+            logging_handler_.queue,
+            queue_handler_,
+            modules,
+            web_cooldown_timer,
+            web_request_lock,
         )
         queue_handler_.prevent_shutdown_flag = bot_handler_.prevent_shutdown_flag
 

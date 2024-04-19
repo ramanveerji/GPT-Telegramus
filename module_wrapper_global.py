@@ -40,15 +40,28 @@ from lmao_process_loop_web import lmao_process_loop_web
 from google_ai_module import GoogleAIModule
 from ms_copilot_module import MSCopilotModule
 from ms_copilot_designer_module import MSCopilotDesignerModule
+from groq_module import GroqModule
 
 
 # List of available modules (their names)
 # LlM-Api-Open (LMAO) modules should start with lmao_
 # See <https://github.com/F33RNI/LlM-Api-Open> for more info
-MODULES = ["lmao_chatgpt", "lmao_ms_copilot", "chatgpt", "dalle", "ms_copilot", "ms_copilot_designer", "gemini"]
+MODULES = [
+    "lmao_chatgpt",
+    "lmao_ms_copilot",
+    "chatgpt",
+    "dalle",
+    "ms_copilot",
+    "ms_copilot_designer",
+    "gemini",
+    "groq",
+]
 
 # Names of modules with conversation history (clearable)
-MODULES_WITH_HISTORY = ["lmao_chatgpt", "lmao_ms_copilot", "chatgpt", "ms_copilot", "gemini"]
+MODULES_WITH_HISTORY = ["lmao_chatgpt", "lmao_ms_copilot", "chatgpt", "ms_copilot", "gemini", "groq"]
+
+# Names of modules with ability to select model
+MODULES_WITH_MODELS = ["groq"]
 
 # Maximum time (in seconds) to wait for LMAO module to close before killing it's process
 _LMAO_STOP_TIMEOUT = 10
@@ -67,7 +80,7 @@ class ModuleWrapperGlobal:
         logging_queue: multiprocessing.Queue,
         use_web: bool,
         web_cooldown_timer: multiprocessing.Value,
-        web_request_lock: multiprocessing.Lock
+        web_request_lock: multiprocessing.Lock,
     ) -> None:
         """Module's class initialization here (and LMAO process initialization)
         This is called from main process. Some other functions (see below) will be called from another processes
@@ -147,7 +160,7 @@ class ModuleWrapperGlobal:
                     self._lmao_response_queue,
                     self._lmao_exceptions_queue,
                     web_cooldown_timer,
-                    web_request_lock
+                    web_request_lock,
                 ),
             )
             with self._lmao_process_running.get_lock():
@@ -193,6 +206,12 @@ class ModuleWrapperGlobal:
         #######################
         elif name == "ms_copilot_designer":
             self.module = MSCopilotDesignerModule(config, self.messages, self.users_handler)
+
+        ########
+        # Groq #
+        ########
+        elif name == "groq":
+            self.module = GroqModule(config, self.messages, self.users_handler)
 
     def is_busy(self) -> bool:
         """
@@ -339,6 +358,13 @@ class ModuleWrapperGlobal:
             self.module.initialize()
             self.module.process_request(request_response)
 
+        ########
+        # Groq #
+        ########
+        elif self.name == "groq":
+            self.module.initialize()
+            self.module.process_request(request_response)
+
         # Done
         logging.info(f"{self.name} request processing finished")
 
@@ -479,6 +505,10 @@ class ModuleWrapperGlobal:
 
         # MS Copilot
         elif self.name == "ms_copilot":
+            self.module.clear_conversation_for_user(user_id)
+
+        # Groq
+        elif self.name == "groq":
             self.module.clear_conversation_for_user(user_id)
 
     def on_exit(self) -> None:

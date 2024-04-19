@@ -51,6 +51,11 @@
     "style_precise": "📏 Preciso",
     "style_balanced": "⚖️ Equilibrado",
     "style_creative": "🎨 Creativo",
+    "model_changed": "✅ El modelo del módulo {module_name} se cambió a {changed_model}",
+    "model_select": "Su modelo del módulo {module_name}: {current_model}\nSeleccione el nuevo modelo del módulo {module_name},\no ignore este mensaje",
+    "model_change_error": "❌ Error al cambiar el modelo.\n\n{error_text}",
+    "model_no_models": "❌ No puede cambiar el modelo del módulo actual.",
+    "button_model_change": "⚙️ Cambiar modelo",
     "button_stop_generating": "🛑 Detener la generación",
     "button_continue": "⏩ Continuar",
     "button_regenerate": "🔄 Regenerar",
@@ -85,6 +90,10 @@
         "gemini": {
             "icon": "♊",
             "name": "Gemini"
+        },
+        "groq": {
+            "icon": "🔴",
+            "name": "Groq"
         }
     }
 }

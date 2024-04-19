@@ -3,14 +3,15 @@
     "config_version": 7,
 
     "__comment02__": "General config of enabled modules",
-    "__comment03__": "Available modules: lmao_chatgpt, lmao_ms_copilot, ms_copilot, ms_copilot_designer, gemini",
+    "__comment03__": "Available modules: lmao_chatgpt, lmao_ms_copilot, ms_copilot, ms_copilot_designer, gemini, groq",
     "__comment04__": "NOTE: ms_copilot and ms_copilot_designer modules are DEPRECATED and will be removed soon",
     "modules": {
         "__comment01__": "Enabled modules",
         "enabled": [
             "lmao_chatgpt",
             "lmao_ms_copilot",
-            "gemini"
+            "gemini",
+            "groq"
         ],
 
         "__comment02__": "Default (initial) module for handling user messages",
@@ -98,6 +99,10 @@
             {
                 "command": "module",
                 "description": "↕ Change module to chat with"
+            },
+            {
+                "command": "model",
+                "description": "⚙️ Change model of module (ex. For 🔴 Groq module)"
             },
             {
                 "command": "clear",

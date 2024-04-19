@@ -107,7 +107,8 @@ def request_processor(
     except Exception as e:
         request_.error = True
         lang_id = users_handler_.get_key(user_id, "lang_id", "eng")
-        request_.response_text = messages_.get_message("response_error", lang_id=lang_id).format(error_text=str(e))
+        error_text = str(e)[:1000]
+        request_.response_text = messages_.get_message("response_error", lang_id=lang_id).format(error_text=error_text)
         async_helper(send_message_async(config.get("telegram"), messages_, request_, end=True))
         logging.error("Error processing request", exc_info=e)
 
