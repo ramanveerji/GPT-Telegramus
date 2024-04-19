@@ -1,6 +1,6 @@
 {
     "__comment01__": "Version of config file. Please don't change it",
-    "config_version": 6,
+    "config_version": 7,
 
     "__comment02__": "General config of enabled modules",
     "__comment03__": "Available modules: lmao_chatgpt, lmao_ms_copilot, ms_copilot, ms_copilot_designer, gemini",
@@ -121,5 +121,23 @@
 
         "__comment07__": "Timestamp format",
         "timestamp_format": "%Y-%m-%d %H:%M:%S"
+    },
+
+    "__comment08__": "Configs to enable external API. See <https://github.com/F33RNI/LlM-Api-Open> for more info",
+    "lmao": {
+        "__comment01__": "true to enable API, false to disable",
+        "api_enabled": false,
+
+        "__comment02__": "Server IP and port",
+        "ip": "0.0.0.0",
+        "port": 1312,
+
+        "__comment03__": "Start HTTPS server instead of HTTP",
+        "ssl": false,
+        "ssl_certificate_path": "certificate.crt",
+        "ssl_key_path": "private.key",
+
+        "__comment04__": "Provide some strong random API tokens here to enable authorization (ex.: iuyeeNoh6hohhohSh)",
+        "tokens": []
     }
 }

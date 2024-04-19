@@ -24,8 +24,10 @@ import logging
 import multiprocessing
 import os
 import sys
+import threading
 from typing import Dict
 
+from lmao.external_api import ExternalAPI
 
 from _version import __version__
 import logging_handler
@@ -37,7 +39,7 @@ import module_wrapper_global
 
 # Default config file
 CONFIG_FILE = "config.json"
-CONFIG_COMPATIBLE_VERSIONS = [5, 6]
+CONFIG_COMPATIBLE_VERSIONS = [5, 6, 7]
 
 
 def load_and_parse_config(config_file: str) -> Dict:
@@ -112,6 +114,26 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def lmao_external_api(external_api_: ExternalAPI, config: Dict) -> None:
+    """Starts ExternalAPI from LMAO
+
+    Args:
+        external_api_ (ExternalAPI): ExternalAPI class instance
+        config (Dict): global config as JSON
+    """
+    try:
+        if config["lmao"].get("ssl"):
+            external_api_.run(
+                config["lmao"]["ip"],
+                config["lmao"]["port"],
+                ssl_context=(config["lmao"].get("ssl_certificate_path"), config["lmao"].get("ssl_key_path")),
+            )
+        else:
+            external_api_.run(config["lmao"]["ip"], config["lmao"]["port"])
+    except Exception as e:
+        logging.error("LMAO external API error", exc_info=e)
+
+
 def main():
     """Main entry"""
     # Multiprocessing fix for Windows
@@ -184,6 +206,24 @@ def main():
         initialization_ok = True
     except Exception as e:
         logging.error("Initialization error", exc_info=e)
+
+    # Start LMAO API if needed
+    if "lmao" in config and config["lmao"].get("api_enabled"):
+        logging.info("Trying to start LMAO external API")
+        try:
+            external_api_ = ExternalAPI(config, tokens=config["lmao"].get("tokens", []))
+            external_api_.modules = modules
+            lmao_external_api_thread = threading.Thread(
+                target=lmao_external_api,
+                args=(
+                    external_api_,
+                    config,
+                ),
+            )
+            lmao_external_api_thread.daemon = True
+            lmao_external_api_thread.start()
+        except Exception as e:
+            logging.error("Error starting LMAO external API", exc_info=e)
 
     # Finally, start queue handler and bot polling (blocking)
     if initialization_ok:
