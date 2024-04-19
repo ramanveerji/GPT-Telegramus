@@ -37,7 +37,7 @@ import module_wrapper_global
 
 # Default config file
 CONFIG_FILE = "config.json"
-CONFIG_COMPATIBLE_VERSIONS = [5, 6, 7]
+CONFIG_COMPATIBLE_VERSIONS = [5, 6, 7, 8]
 
 
 def load_and_parse_config(config_file: str) -> Dict:
@@ -66,6 +66,8 @@ def load_and_parse_config(config_file: str) -> Dict:
             f"Your config version ({config_version}) is not compatible! "
             f"Compatible versions: {', '.join(str(version) for version in CONFIG_COMPATIBLE_VERSIONS)}"
         )
+    if config_version < max(CONFIG_COMPATIBLE_VERSIONS):
+        logging.warning(f"You config version {config_version} < {max(CONFIG_COMPATIBLE_VERSIONS)}! Please update it")
 
     # List of enabled modules
     enabled_modules = config.get("modules").get("enabled")
