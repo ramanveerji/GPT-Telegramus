@@ -116,7 +116,11 @@
                 "command": "chatid",
                 "description": "🆔 Show your chat_id"
             }
-        ]
+        ],
+
+        "__comment15__": "If needed, specify proxy in http://ip:port format (specify http even if it's https proxy)",
+        "__comment16__": "Use http://username:password@ip:port format in case of proxy with authorization",
+        "proxy": ""
     },
 
     "__comment07__": "Save all requests and responses to the files",

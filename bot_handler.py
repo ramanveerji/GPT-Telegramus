@@ -166,7 +166,17 @@ class BotHandler:
 
                 # Build bot
                 telegram_config = self.config.get("telegram")
-                builder = ApplicationBuilder().token(telegram_config.get("api_key"))
+                proxy = telegram_config.get("proxy")
+                if proxy:
+                    logging.info(f"Using proxy {proxy} for Telegram bot")
+                    builder = (
+                        ApplicationBuilder()
+                        .token(telegram_config.get("api_key"))
+                        .proxy(proxy)
+                        .get_updates_proxy(proxy)
+                    )
+                else:
+                    builder = ApplicationBuilder().token(telegram_config.get("api_key"))
                 self._application = builder.build()
 
                 # Set commands
