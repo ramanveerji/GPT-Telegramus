@@ -29,9 +29,6 @@ from lmao.module_wrapper import STATUS_NOT_INITIALIZED, STATUS_IDLE, STATUS_BUSY
 from lmao.module_wrapper import MODULES as LMAO_MODULES
 
 import psutil
-from google_ai_module import GoogleAIModule
-from ms_copilot_module import MSCopilotModule
-from ms_copilot_designer_module import MSCopilotDesignerModule
 
 import messages
 import users_handler
@@ -39,6 +36,10 @@ import request_response_container
 from async_helper import async_helper
 from bot_sender import send_message_async
 from lmao_process_loop import LMAO_LOOP_DELAY, lmao_process_loop
+from lmao_process_loop_web import lmao_process_loop_web
+from google_ai_module import GoogleAIModule
+from ms_copilot_module import MSCopilotModule
+from ms_copilot_designer_module import MSCopilotDesignerModule
 
 
 # List of available modules (their names)
@@ -64,6 +65,9 @@ class ModuleWrapperGlobal:
         messages_: messages.Messages,
         users_handler_: users_handler.UsersHandler,
         logging_queue: multiprocessing.Queue,
+        use_web: bool,
+        web_cooldown_timer: multiprocessing.Value,
+        web_request_lock: multiprocessing.Lock
     ) -> None:
         """Module's class initialization here (and LMAO process initialization)
         This is called from main process. Some other functions (see below) will be called from another processes
@@ -74,6 +78,9 @@ class ModuleWrapperGlobal:
             messages_ (messages.Messages): initialized messages wrapper
             users_handler_ (users_handler.UsersHandler): initialized users handler
             logging_queue (multiprocessing.Queue): initialized logging queue to handle logs from separate processes
+            use_web (bool): True to use web API for LMAO modules instead of python package
+            web_cooldown_timer (multiprocessing.Value): double value that stores last request time to LMAO in seconds
+            web_request_lock (multiprocessing.Lock): lock to prevent multiple process from sending multiple requests
 
         Raises:
             Exception: no module or module class __init__ error
@@ -123,7 +130,7 @@ class ModuleWrapperGlobal:
             # Start LMAO process (LMAO modules needs to be loaded constantly so we need all that stuff at least for now)
             logging.info("Starting _lmao_process_loop as process")
             self._lmao_process = multiprocessing.Process(
-                target=lmao_process_loop,
+                target=lmao_process_loop_web if use_web else lmao_process_loop,
                 args=(
                     self.name,
                     self.name_lmao,
@@ -139,6 +146,8 @@ class ModuleWrapperGlobal:
                     self._lmao_request_queue,
                     self._lmao_response_queue,
                     self._lmao_exceptions_queue,
+                    web_cooldown_timer,
+                    web_request_lock
                 ),
             )
             with self._lmao_process_running.get_lock():

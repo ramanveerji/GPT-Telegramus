@@ -14,7 +14,21 @@
         ],
 
         "__comment02__": "Default (initial) module for handling user messages",
-        "default": "lmao_chatgpt"
+        "default": "lmao_chatgpt",
+
+        "__comment03__": "Specify modules for which to use web API instead of python package. ex: ['lmao_chatgpt']",
+        "lmao_web_for_modules": [],
+
+        "__comment04__": "LMAO web API URL (without tailing slash)",
+        "lmao_web_api_url": "http://localhost:1312/api",
+
+        "__comment05__": "If needed, specify LMAO API token (from --tokens-manage) argument",
+        "__comment06__": "See <https://github.com/F33RNI/LlM-Api-Open> for more info",
+        "lmao_token_manage": "",
+
+        "__comment07__": "If needed, specify proxy in http://ip:port format (specify http even if it's https proxy)",
+        "__comment08__": "Use http://username:password@ip:port format in case of proxy with authorization",
+        "lmao_web_proxy": ""
     },
 
     "__comment05__": "Paths to files and directories",
@@ -121,23 +135,5 @@
 
         "__comment07__": "Timestamp format",
         "timestamp_format": "%Y-%m-%d %H:%M:%S"
-    },
-
-    "__comment08__": "Configs to enable external API. See <https://github.com/F33RNI/LlM-Api-Open> for more info",
-    "lmao": {
-        "__comment01__": "true to enable API, false to disable",
-        "api_enabled": false,
-
-        "__comment02__": "Server IP and port",
-        "ip": "0.0.0.0",
-        "port": 1312,
-
-        "__comment03__": "Start HTTPS server instead of HTTP",
-        "ssl": false,
-        "ssl_certificate_path": "certificate.crt",
-        "ssl_key_path": "private.key",
-
-        "__comment04__": "Provide some strong random API tokens here to enable authorization (ex.: iuyeeNoh6hohhohSh)",
-        "tokens": []
     }
 }

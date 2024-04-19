@@ -59,6 +59,7 @@ def lmao_process_loop(
     lmao_request_queue: multiprocessing.Queue,
     lmao_response_queue: multiprocessing.Queue,
     lmao_exceptions_queue: multiprocessing.Queue,
+    *args,
 ) -> None:
     """Handler for lmao's ModuleWrapper
     (see module_wrapper_global.py for more info)

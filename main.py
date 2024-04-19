@@ -19,15 +19,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
 import argparse
+from ctypes import c_double
 import json
 import logging
 import multiprocessing
 import os
 import sys
-import threading
 from typing import Dict
-
-from lmao.external_api import ExternalAPI
 
 from _version import __version__
 import logging_handler
@@ -114,26 +112,6 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def lmao_external_api(external_api_: ExternalAPI, config: Dict) -> None:
-    """Starts ExternalAPI from LMAO
-
-    Args:
-        external_api_ (ExternalAPI): ExternalAPI class instance
-        config (Dict): global config as JSON
-    """
-    try:
-        if config["lmao"].get("ssl"):
-            external_api_.run(
-                config["lmao"]["ip"],
-                config["lmao"]["port"],
-                ssl_context=(config["lmao"].get("ssl_certificate_path"), config["lmao"].get("ssl_key_path")),
-            )
-        else:
-            external_api_.run(config["lmao"]["ip"], config["lmao"]["port"])
-    except Exception as e:
-        logging.error("LMAO external API error", exc_info=e)
-
-
 def main():
     """Main entry"""
     # Multiprocessing fix for Windows
@@ -178,6 +156,9 @@ def main():
         # Load messages
         messages_.langs_load(config.get("files").get("messages_dir"))
 
+        web_cooldown_timer = multiprocessing.Value(c_double, 0.0)
+        web_request_lock = multiprocessing.Lock()
+
         # modules = {} is a dictionary of ModuleWrapperGlobal (each enabled module)
         # {
         #   "module_name": ModuleWrapperGlobal,
@@ -185,9 +166,21 @@ def main():
         # }
         for module_name in config.get("modules").get("enabled"):
             logging.info(f"Trying to load and initialize {module_name} module")
+            use_web = (
+                module_name.startswith("lmao_")
+                and module_name in config.get("modules").get("lmao_web_for_modules", [])
+                and "lmao_web_api_url" in config.get("modules")
+            )
             try:
                 module = module_wrapper_global.ModuleWrapperGlobal(
-                    module_name, config, messages_, users_handler_, logging_handler_.queue
+                    module_name,
+                    config,
+                    messages_,
+                    users_handler_,
+                    logging_handler_.queue,
+                    use_web,
+                    web_cooldown_timer=web_cooldown_timer,
+                    web_request_lock=web_request_lock,
                 )
                 modules[module_name] = module
             except Exception as e:
@@ -206,24 +199,6 @@ def main():
         initialization_ok = True
     except Exception as e:
         logging.error("Initialization error", exc_info=e)
-
-    # Start LMAO API if needed
-    if "lmao" in config and config["lmao"].get("api_enabled"):
-        logging.info("Trying to start LMAO external API")
-        try:
-            external_api_ = ExternalAPI(config, tokens=config["lmao"].get("tokens", []))
-            external_api_.modules = modules
-            lmao_external_api_thread = threading.Thread(
-                target=lmao_external_api,
-                args=(
-                    external_api_,
-                    config,
-                ),
-            )
-            lmao_external_api_thread.daemon = True
-            lmao_external_api_thread.start()
-        except Exception as e:
-            logging.error("Error starting LMAO external API", exc_info=e)
 
     # Finally, start queue handler and bot polling (blocking)
     if initialization_ok:
