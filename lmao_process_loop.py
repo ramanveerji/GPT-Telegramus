@@ -146,6 +146,8 @@ def lmao_process_loop(
             logging.warning(f"Exit from {name} loop requested")
             break
 
+        request_response = None
+
         try:
             # Wait a bit to prevent overloading
             # We need to wait at the beginning to enable delay even after exception
@@ -258,10 +260,8 @@ def lmao_process_loop(
                             break
 
                     # Save conversation ID
+                    logging.info(f"Saving user {request_response.user_id} conversation ID as: name_{conversation_id}")
                     users_handler_.set_key(request_response.user_id, name + "_conversation_id", conversation_id)
-
-                    # Return container
-                    lmao_response_queue.put(request_response)
 
             # Non-blocking get of user_id to clear conversation for
             delete_conversation_user_id = None
@@ -297,10 +297,12 @@ def lmao_process_loop(
             logging.error(f"{name} error", exc_info=e)
             lmao_exceptions_queue.put(e)
 
-        # Read module's status
+        # Read module's status and return the container
         finally:
             with lmao_module_status.get_lock():
                 lmao_module_status.value = module.status
+            if request_response:
+                lmao_response_queue.put(request_response)
 
     # Wait for stop handler to finish
     if stop_handler_thread and stop_handler_thread.is_alive():

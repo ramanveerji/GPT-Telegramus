@@ -289,8 +289,8 @@ class ModuleWrapperGlobal:
             self._lmao_request_queue.put(request_response)
 
             # Wait until it's processed or failed
-            logging.info(f"Waiting for {self.name} request to be processed")
-            time.sleep(1)
+            logging.info(f"Waiting for {self.name} request to be processed (waiting for container)")
+            response_ = None
             while True:
                 # Check process
                 with self._lmao_process_running.get_lock():
@@ -307,21 +307,18 @@ class ModuleWrapperGlobal:
                 if lmao_exception is not None:
                     raise lmao_exception
 
-                # Check status
-                with self._lmao_module_status.get_lock():
-                    module_status = self._lmao_module_status.value
-                if module_status == STATUS_IDLE:
+                # Try to get container back
+                try:
+                    response_ = self._lmao_response_queue.get(block=False)
+                except queue.Empty:
+                    pass
+                if response_:
+                    logging.info(f"Received container back from {self.name} process")
                     break
 
                 time.sleep(LMAO_LOOP_DELAY)
 
             # Update container
-            # TODO: Optimize this
-            response_ = None
-            try:
-                response_ = self._lmao_response_queue.get(block=True, timeout=1)
-            except queue.Empty:
-                logging.warning(f"Cannot get container back from {self.name} process")
             if response_:
                 request_response.response_text = response_.response_text
                 for response_image in response_.response_images:
@@ -335,6 +332,8 @@ class ModuleWrapperGlobal:
                 request_response.error = response_.error
                 request_response.response_next_chunk_start_index = response_.response_next_chunk_start_index
                 request_response.response_sent_len = response_.response_sent_len
+            else:
+                logging.warning(f"Unable to get container back from {self.name} process")
 
         ##########
         # Gemini #

@@ -372,6 +372,9 @@ def lmao_process_loop_web(
             logging.warning(f"Exit from {name} loop requested")
             break
 
+        release_lock = False
+        request_response = None
+
         try:
             # Wait a bit to prevent overloading
             # We need to wait at the beginning to enable delay even after exception
@@ -435,89 +438,83 @@ def lmao_process_loop_web(
                     users_handler_.set_key(request_response.user_id, "suggestions", [])
 
                     # Ask and read stream
-                    try:
-                        for line in _request_wrapper(
-                            api_url,
-                            "ask",
-                            {name_lmao: module_request},
-                            cooldown_timer,
-                            request_lock,
-                            proxy,
-                            token,
-                            stream=True,
-                        ).iter_lines():
-                            if not line:
-                                continue
-                            try:
-                                response = json.loads(line.decode("utf-8"))
-                            except Exception as e:
-                                logging.warning(f"Unable to parse response line as JSON: {e}")
-                                continue
+                    release_lock = True
+                    for line in _request_wrapper(
+                        api_url,
+                        "ask",
+                        {name_lmao: module_request},
+                        cooldown_timer,
+                        request_lock,
+                        proxy,
+                        token,
+                        stream=True,
+                    ).iter_lines():
+                        if not line:
+                            continue
+                        try:
+                            response = json.loads(line.decode("utf-8"))
+                        except Exception as e:
+                            logging.warning(f"Unable to parse response line as JSON: {e}")
+                            continue
 
-                            finished = response.get("finished")
-                            conversation_id = response.get("conversation_id")
-                            request_response.response_text = response.get("response")
+                        finished = response.get("finished")
+                        conversation_id = response.get("conversation_id")
+                        request_response.response_text = response.get("response")
 
-                            images = response.get("images")
-                            if images is not None:
-                                request_response.response_images = images[:]
+                        images = response.get("images")
+                        if images is not None:
+                            request_response.response_images = images[:]
 
-                            # Format and add attributions
-                            attributions = response.get("attributions")
-                            if attributions is not None and len(attributions) != 0:
-                                response_link_format = messages_.get_message(
-                                    "response_link_format", user_id=request_response.user_id
-                                )
-                                request_response.response_text += "\n"
-                                for i, attribution in enumerate(attributions):
-                                    request_response.response_text += response_link_format.format(
-                                        source_name=str(i + 1), link=attribution.get("url", "")
-                                    )
-
-                            # Suggestions must be stored as tuples with unique ID for reply-markup
-                            if finished:
-                                suggestions = response.get("suggestions")
-                                if suggestions is not None:
-                                    request_response.response_suggestions = []
-                                    for suggestion in suggestions:
-                                        if not suggestion or len(suggestion) < 1:
-                                            continue
-                                        id_ = "".join(
-                                            random.choices(
-                                                string.ascii_uppercase + string.ascii_lowercase + string.digits, k=8
-                                            )
-                                        )
-                                        request_response.response_suggestions.append((id_, suggestion))
-                                    users_handler_.set_key(
-                                        request_response.user_id,
-                                        "suggestions",
-                                        request_response.response_suggestions,
-                                    )
-
-                            # Check if exit was requested
-                            with lmao_process_running.get_lock():
-                                lmao_process_running_value = lmao_process_running.value
-                            if not lmao_process_running_value:
-                                finished = True
-
-                            # Send response to the user
-                            async_helper(
-                                send_message_async(config.get("telegram"), messages_, request_response, end=finished)
+                        # Format and add attributions
+                        attributions = response.get("attributions")
+                        if attributions is not None and len(attributions) != 0:
+                            response_link_format = messages_.get_message(
+                                "response_link_format", user_id=request_response.user_id
                             )
+                            request_response.response_text += "\n"
+                            for i, attribution in enumerate(attributions):
+                                request_response.response_text += response_link_format.format(
+                                    source_name=str(i + 1), link=attribution.get("url", "")
+                                )
 
-                            # Exit from stream reader
-                            if not lmao_process_running_value:
-                                break
+                        # Suggestions must be stored as tuples with unique ID for reply-markup
+                        if finished:
+                            suggestions = response.get("suggestions")
+                            if suggestions is not None:
+                                request_response.response_suggestions = []
+                                for suggestion in suggestions:
+                                    if not suggestion or len(suggestion) < 1:
+                                        continue
+                                    id_ = "".join(
+                                        random.choices(
+                                            string.ascii_uppercase + string.ascii_lowercase + string.digits, k=8
+                                        )
+                                    )
+                                    request_response.response_suggestions.append((id_, suggestion))
+                                users_handler_.set_key(
+                                    request_response.user_id,
+                                    "suggestions",
+                                    request_response.response_suggestions,
+                                )
 
-                        # Save conversation ID
-                        users_handler_.set_key(request_response.user_id, name + "_conversation_id", conversation_id)
+                        # Check if exit was requested
+                        with lmao_process_running.get_lock():
+                            lmao_process_running_value = lmao_process_running.value
+                        if not lmao_process_running_value:
+                            finished = True
 
-                        # Return container
-                        lmao_response_queue.put(request_response)
+                        # Send response to the user
+                        async_helper(
+                            send_message_async(config.get("telegram"), messages_, request_response, end=finished)
+                        )
 
-                    # Release lock after stream stop
-                    finally:
-                        request_lock.release()
+                        # Exit from stream reader
+                        if not lmao_process_running_value:
+                            break
+
+                    # Save conversation ID
+                    logging.info(f"Saving user {request_response.user_id} conversation ID as: name_{conversation_id}")
+                    users_handler_.set_key(request_response.user_id, name + "_conversation_id", conversation_id)
 
             # Non-blocking get of user_id to clear conversation for
             delete_conversation_user_id = None
@@ -579,6 +576,14 @@ def lmao_process_loop_web(
         except Exception as e:
             logging.error(f"{name} error", exc_info=e)
             lmao_exceptions_queue.put(e)
+
+        # Release lock if needed and return the container
+        finally:
+            if release_lock:
+                request_lock.release()
+                release_lock = False
+            if request_response:
+                lmao_response_queue.put(request_response)
 
     # Read module status
     try:
