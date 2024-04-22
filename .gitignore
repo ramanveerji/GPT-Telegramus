@@ -26,3 +26,4 @@ env
 __pycache__
 certificate.*
 private.*
+*.tar.gz

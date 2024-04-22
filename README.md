@@ -1,7 +1,7 @@
 # 🤖 GPT-Telegramus v5
 
-| ![GPT-Telegramus logo](logo.png) | <h3>The best free Telegram bot for ChatGPT, Microsoft Copilot (aka Bing AI, aka Sidney, aka EdgeGPT), Microsoft Copilot Designer (aka BingImageCreator) and Gemini with stream writing, requests with images (currently, for Gemini only), multiple languages, admin control, data logging and more!</h3> |
-| -------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
+| ![GPT-Telegramus logo](logo.png) | <h3>The best free Telegram bot for ChatGPT, Microsoft Copilot (aka Bing AI / Sidney / EdgeGPT), Microsoft Copilot Designer (aka BingImageCreator), Gemini and Groq with stream writing, requests with images, multiple languages, admin control, data logging and more!</h3> |
+| -------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
 
 <div style="width:100%;text-align:center;">
     <p align="center">
@@ -20,14 +20,12 @@
     <p align="center">
         <a href="https://aur.archlinux.org/packages/gpt-telegramus"><img alt="" src="https://img.shields.io/aur/last-modified/gpt-telegramus?logo=ArchLinux" ></a>
         <a href="https://aur.archlinux.org/packages/gpt-telegramus"><img alt="" src="https://img.shields.io/aur/version/gpt-telegramus?logo=ArchLinux" ></a>
-        <a href="https://aur.archlinux.org/packages/gpt-telegramus"><img alt="" src="https://img.shields.io/aur/maintainer/gpt-telegramus?logo=ArchLinux" ></a>
     </p>
 </div>
 <div style="width:100%;text-align:center;">
     <p align="center">
         <a href="https://aur.archlinux.org/packages/gpt-telegramus-git"><img alt="" src="https://img.shields.io/aur/last-modified/gpt-telegramus-git?logo=ArchLinux" ></a>
         <a href="https://aur.archlinux.org/packages/gpt-telegramus-git"><img alt="" src="https://img.shields.io/aur/version/gpt-telegramus-git?logo=ArchLinux" ></a>
-        <a href="https://aur.archlinux.org/packages/gpt-telegramus-git"><img alt="" src="https://img.shields.io/aur/maintainer/gpt-telegramus-git?logo=ArchLinux" ></a>
     </p>
 </div>
 
@@ -99,6 +97,7 @@
 ## 📙 Project based on
 
 - **F33RNI/LMAO API** (Unofficial open APIs): <https://github.com/F33RNI/LlM-Api-Open>
+- **Groq API** (Official Python API): <https://github.com/groq/groq-python>
 - **acheong08/EdgeGPT** (API): <https://github.com/acheong08/EdgeGPT>
 - **jacobgelling/EdgeGPT** (API): <https://github.com/jacobgelling/EdgeGPT>
 - **acheong08/BingImageCreator** (API): <https://github.com/acheong08/BingImageCreator>
@@ -120,12 +119,12 @@ See **🐧 Running as service on linux**, **🍓 Running on Raspberry Pi (ARM)**
 7. Carefully change all the settings in `config.json` file and in each `*.json` file inside `module_configs` directory. If you have questions regarding any setting, open an issue, I'll try to add a more detailed description
 8. Run main script `python main.py`
 
-- **ChatGPT**
+- 💬 **ChatGPT**
   - Free browser-like Chat-GPT. Currently, without extensions and image requests (text only) (because I don't have a paid account to test it)
   - Stream response support
   - Chat history support
   - See <https://github.com/F33RNI/LlM-Api-Open> for more info
-- **Microsoft Copilot (aka EdgeGPT aka Bing AI aka Sydney)**
+- 🟦 **Microsoft Copilot (aka EdgeGPT aka Bing AI aka Sydney)**
   - Supports conversation style `/style`
   - Stream response support
   - Chat history support
@@ -135,14 +134,19 @@ See **🐧 Running as service on linux**, **🍓 Running on Raspberry Pi (ARM)**
   - Suggestions (for **lmao_ms_copilot** only)
   - See <https://github.com/F33RNI/LlM-Api-Open> for more info
   - **NOTE:** Non-LMAO API (the old one `ms_copilot`) is deprecated! Please use `lmao_ms_copilot` instead
-- *Microsoft Copilot Designer* (**DEPRECATED**)
+- 🎨 *Microsoft Copilot Designer* (**DEPRECATED**)
   - Bing Image Generator. Used as a separate module due to issues with the EdgeGPT module
   - Free and unlimited
-- **Gemini**
+- ♊ **Gemini**
   - Google's AI using the Gemini Pro model
   - Chat history support
   - Requests with images (you can send an image with text to it)
   - Requests with images will not be recorded in the chat history since Google hasn't support this
+- 🔴 **Groq**
+  - Official Python API
+  - Chat history support
+  - **Very fast** response
+  - Multiple models (*see `/model` command*)
 
 ----------
 
@@ -286,7 +290,9 @@ You can add **a new language**. For that:
 - 🧹 `/clear` - Clear chat history
 - 🌎 `/lang` - Change the language
 - 🆔 `/chatid` - Show your chat_id
+- ⚙️ `/model` - Change model of module (Currently for 🔴 Groq module only)
 - `/style` - Bing AI conversation style
+- `/chat` - Send request in group chat
 - Other direct module commands (please check automatically-generated list of commands inside bot)
 
 ### Admin commands
