@@ -1,0 +1,23 @@
+{
+    "__comment01__": "Api key from <https://console.groq.com/keys>",
+    "api_key": "",
+
+    "__comment02__": "Groq API base URL",
+    "base_url": "https://api.groq.com",
+
+    "__comment03__": "Default model to use (users can change this by using /model command)",
+    "model_default": "llama3-8b-8192",
+
+    "__comment04__": "Available (and enabled) models. See <https://console.groq.com/docs/models> for more info",
+    "models": ["llama3-8b-8192", "llama3-70b-8192", "llama2-70b-4096", "mixtral-8x7b-32768", "gemma-7b-it"],
+
+    "__comment05__": "If needed, specify proxy in http://ip:port format (specify http even if it's https proxy)",
+    "__comment06__": "Use http://username:password@ip:port format in case of proxy with authorization",
+    "proxy": "",
+
+    "__comment07__": "Response timeout (in seconds)",
+    "timeout_seconds": 120,
+
+    "__comment08__": "How often each user can send requests to this module (specify 0 to remove the restriction)",
+    "user_cooldown_seconds": 0
+}

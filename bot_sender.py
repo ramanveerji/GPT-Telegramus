@@ -226,6 +226,14 @@ def build_markup(
         )
         buttons.append(button_style)
 
+    # Add change model button
+    if request_response.module_name in module_wrapper_global.MODULES_WITH_MODELS:
+        button_model = InlineKeyboardButton(
+            messages_.get_message("button_model_change", user_id=user_id),
+            callback_data=f"model|{request_response.module_name}|",
+        )
+        buttons.append(button_model)
+
     # Add change module button for all modules
     button_module = InlineKeyboardButton(
         messages_.get_message("button_module", user_id=user_id),

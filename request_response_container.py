@@ -33,7 +33,7 @@ PROCESSING_STATE_CANCELING = 6
 PROCESSING_STATE_ABORT = 7
 
 # State to string
-PROCESSING_STATE_NAMES = ["Waiting", "Starting", "Active", "Done", "Timed out", "Canceling", "Canceling"]
+PROCESSING_STATE_NAMES = ["Waiting", "Starting", "Active", "Done", "Timed out", "Canceling", "Canceling", "Abort"]
 
 
 class RequestResponseContainer:

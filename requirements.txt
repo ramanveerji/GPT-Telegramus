@@ -1,8 +1,8 @@
 git+https://github.com/F33RNI/EdgeGPT@main#egg=EdgeGPT
 git+https://github.com/F33RNI/md2tgmd.git@main
-llm-api-open~=2.1
+llm-api-open~=2.2
 revChatGPT==6.8.6
-python-telegram-bot==20.3
+python-telegram-bot>=20.3
 openai>=0.26.4
 tiktoken>=0.2.0
 OpenAIAuth>=0.3.2
@@ -12,3 +12,6 @@ BingImageCreator>=0.5.0
 langdetect>=1.0.9
 google-generativeai >= 0.3.1
 packaging>=23.2
+requests>=2,<3
+groq>=0,<1
+httpx>=0,<1

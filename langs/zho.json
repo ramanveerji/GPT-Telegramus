@@ -51,6 +51,11 @@
     "style_precise": "📏 精确",
     "style_balanced": "⚖️ 平衡",
     "style_creative": "🎨 创意",
+    "model_changed": "✅ 模块 {module_name} 的模型已更改为 {changed_model}",
+    "model_select": "您当前的 {module_name} 模块模型：{current_model}\n选择 {module_name} 模块的新模型，\n或忽略此消息",
+    "model_change_error": "❌ 更改模型时出错！\n\n{error_text}",
+    "model_no_models": "❌ 您无法更改当前模块的模型！",
+    "button_model_change": "⚙️ 更改模型",
     "button_stop_generating": "🛑 停止生成",
     "button_continue": "⏩ 继续",
     "button_regenerate": "🔄 重新生成",
@@ -85,6 +90,10 @@
         "gemini": {
             "icon": "♊",
             "name": "Gemini"
+        },
+        "groq": {
+            "icon": "🔴",
+            "name": "Groq"
         }
     }
 }

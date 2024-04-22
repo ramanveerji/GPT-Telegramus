@@ -51,6 +51,11 @@
     "style_precise": "📏 Presisi",
     "style_balanced": "⚖️ Seimbang",
     "style_creative": "🎨 Kreatif",
+    "model_changed": "✅ Model dari modul {module_name} berubah menjadi {changed_model}",
+    "model_select": "Model modul {module_name} Anda: {current_model}\nPilih model baru modul {module_name},\natau abaikan pesan ini",
+    "model_change_error": "❌ Kesalahan saat mengubah model!\n\n{error_text}",
+    "model_no_models": "❌ Anda tidak dapat mengubah model modul saat ini!",
+    "button_model_change": "⚙️ Ubah model",
     "button_stop_generating": "🛑 Hentikan penghasilan",
     "button_continue": "⏩ Lanjutkan",
     "button_regenerate": "🔄 Hasilkan ulang",
@@ -85,6 +90,10 @@
         "gemini": {
             "icon": "♊",
             "name": "Gemini"
+        },
+        "groq": {
+            "icon": "🔴",
+            "name": "Groq"
         }
     }
 }

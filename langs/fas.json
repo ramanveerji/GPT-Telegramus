@@ -51,6 +51,11 @@
     "style_precise": "📏 دقیق",
     "style_balanced": "⚖️ متعادل",
     "style_creative": "🎨 خلاق",
+    "model_changed": "✅ مدل از ماژول {module_name} به {changed_model} تغییر کرد",
+    "model_select": "مدل فعلی شما از ماژول {module_name}: {current_model}\nمدل جدید ماژول {module_name} را انتخاب کنید،\nیا این پیام را نادیده بگیرید",
+    "model_change_error": "❌ خطا در تغییر مدل!\n\n{error_text}",
+    "model_no_models": "❌ شما نمی‌توانید مدل ماژول فعلی را تغییر دهید!",
+    "button_model_change": "⚙️ تغییر مدل",
     "button_stop_generating": "🛑 تولید را متوقف کنید",
     "button_continue": "⏩ ادامه",
     "button_regenerate": "🔄 بازسازی کنید",
@@ -85,6 +90,10 @@
         "gemini": {
             "icon": "♊",
             "name": "Gemini"
+        },
+        "groq": {
+            "icon": "🔴",
+            "name": "Groq"
         }
     }
 }

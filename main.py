@@ -19,13 +19,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
 import argparse
+from ctypes import c_double
 import json
 import logging
 import multiprocessing
 import os
 import sys
 from typing import Dict
-
 
 from _version import __version__
 import logging_handler
@@ -37,7 +37,7 @@ import module_wrapper_global
 
 # Default config file
 CONFIG_FILE = "config.json"
-CONFIG_COMPATIBLE_VERSIONS = [5, 6]
+CONFIG_COMPATIBLE_VERSIONS = [5, 6, 7, 8]
 
 
 def load_and_parse_config(config_file: str) -> Dict:
@@ -66,6 +66,8 @@ def load_and_parse_config(config_file: str) -> Dict:
             f"Your config version ({config_version}) is not compatible! "
             f"Compatible versions: {', '.join(str(version) for version in CONFIG_COMPATIBLE_VERSIONS)}"
         )
+    if config_version < max(CONFIG_COMPATIBLE_VERSIONS):
+        logging.warning(f"You config version {config_version} < {max(CONFIG_COMPATIBLE_VERSIONS)}! Please update it")
 
     # List of enabled modules
     enabled_modules = config.get("modules").get("enabled")
@@ -156,6 +158,9 @@ def main():
         # Load messages
         messages_.langs_load(config.get("files").get("messages_dir"))
 
+        web_cooldown_timer = multiprocessing.Value(c_double, 0.0)
+        web_request_lock = multiprocessing.Lock()
+
         # modules = {} is a dictionary of ModuleWrapperGlobal (each enabled module)
         # {
         #   "module_name": ModuleWrapperGlobal,
@@ -163,9 +168,21 @@ def main():
         # }
         for module_name in config.get("modules").get("enabled"):
             logging.info(f"Trying to load and initialize {module_name} module")
+            use_web = (
+                module_name.startswith("lmao_")
+                and module_name in config.get("modules").get("lmao_web_for_modules", [])
+                and "lmao_web_api_url" in config.get("modules")
+            )
             try:
                 module = module_wrapper_global.ModuleWrapperGlobal(
-                    module_name, config, messages_, users_handler_, logging_handler_.queue
+                    module_name,
+                    config,
+                    messages_,
+                    users_handler_,
+                    logging_handler_.queue,
+                    use_web,
+                    web_cooldown_timer=web_cooldown_timer,
+                    web_request_lock=web_request_lock,
                 )
                 modules[module_name] = module
             except Exception as e:
@@ -176,7 +193,15 @@ def main():
             config, messages_, users_handler_, logging_handler_.queue, None, modules
         )
         bot_handler_ = bot_handler.BotHandler(
-            config, args.config, messages_, users_handler_, logging_handler_.queue, queue_handler_, modules
+            config,
+            args.config,
+            messages_,
+            users_handler_,
+            logging_handler_.queue,
+            queue_handler_,
+            modules,
+            web_cooldown_timer,
+            web_request_lock,
         )
         queue_handler_.prevent_shutdown_flag = bot_handler_.prevent_shutdown_flag
 

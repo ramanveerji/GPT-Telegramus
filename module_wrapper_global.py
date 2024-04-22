@@ -29,9 +29,6 @@ from lmao.module_wrapper import STATUS_NOT_INITIALIZED, STATUS_IDLE, STATUS_BUSY
 from lmao.module_wrapper import MODULES as LMAO_MODULES
 
 import psutil
-from google_ai_module import GoogleAIModule
-from ms_copilot_module import MSCopilotModule
-from ms_copilot_designer_module import MSCopilotDesignerModule
 
 import messages
 import users_handler
@@ -39,15 +36,32 @@ import request_response_container
 from async_helper import async_helper
 from bot_sender import send_message_async
 from lmao_process_loop import LMAO_LOOP_DELAY, lmao_process_loop
+from lmao_process_loop_web import lmao_process_loop_web
+from google_ai_module import GoogleAIModule
+from ms_copilot_module import MSCopilotModule
+from ms_copilot_designer_module import MSCopilotDesignerModule
+from groq_module import GroqModule
 
 
 # List of available modules (their names)
 # LlM-Api-Open (LMAO) modules should start with lmao_
 # See <https://github.com/F33RNI/LlM-Api-Open> for more info
-MODULES = ["lmao_chatgpt", "lmao_ms_copilot", "chatgpt", "dalle", "ms_copilot", "ms_copilot_designer", "gemini"]
+MODULES = [
+    "lmao_chatgpt",
+    "lmao_ms_copilot",
+    "chatgpt",
+    "dalle",
+    "ms_copilot",
+    "ms_copilot_designer",
+    "gemini",
+    "groq",
+]
 
 # Names of modules with conversation history (clearable)
-MODULES_WITH_HISTORY = ["lmao_chatgpt", "lmao_ms_copilot", "chatgpt", "ms_copilot", "gemini"]
+MODULES_WITH_HISTORY = ["lmao_chatgpt", "lmao_ms_copilot", "chatgpt", "ms_copilot", "gemini", "groq"]
+
+# Names of modules with ability to select model
+MODULES_WITH_MODELS = ["groq"]
 
 # Maximum time (in seconds) to wait for LMAO module to close before killing it's process
 _LMAO_STOP_TIMEOUT = 10
@@ -64,6 +78,9 @@ class ModuleWrapperGlobal:
         messages_: messages.Messages,
         users_handler_: users_handler.UsersHandler,
         logging_queue: multiprocessing.Queue,
+        use_web: bool,
+        web_cooldown_timer: multiprocessing.Value,
+        web_request_lock: multiprocessing.Lock,
     ) -> None:
         """Module's class initialization here (and LMAO process initialization)
         This is called from main process. Some other functions (see below) will be called from another processes
@@ -74,6 +91,9 @@ class ModuleWrapperGlobal:
             messages_ (messages.Messages): initialized messages wrapper
             users_handler_ (users_handler.UsersHandler): initialized users handler
             logging_queue (multiprocessing.Queue): initialized logging queue to handle logs from separate processes
+            use_web (bool): True to use web API for LMAO modules instead of python package
+            web_cooldown_timer (multiprocessing.Value): double value that stores last request time to LMAO in seconds
+            web_request_lock (multiprocessing.Lock): lock to prevent multiple process from sending multiple requests
 
         Raises:
             Exception: no module or module class __init__ error
@@ -123,7 +143,7 @@ class ModuleWrapperGlobal:
             # Start LMAO process (LMAO modules needs to be loaded constantly so we need all that stuff at least for now)
             logging.info("Starting _lmao_process_loop as process")
             self._lmao_process = multiprocessing.Process(
-                target=lmao_process_loop,
+                target=lmao_process_loop_web if use_web else lmao_process_loop,
                 args=(
                     self.name,
                     self.name_lmao,
@@ -139,6 +159,8 @@ class ModuleWrapperGlobal:
                     self._lmao_request_queue,
                     self._lmao_response_queue,
                     self._lmao_exceptions_queue,
+                    web_cooldown_timer,
+                    web_request_lock,
                 ),
             )
             with self._lmao_process_running.get_lock():
@@ -184,6 +206,12 @@ class ModuleWrapperGlobal:
         #######################
         elif name == "ms_copilot_designer":
             self.module = MSCopilotDesignerModule(config, self.messages, self.users_handler)
+
+        ########
+        # Groq #
+        ########
+        elif name == "groq":
+            self.module = GroqModule(config, self.messages, self.users_handler)
 
     def is_busy(self) -> bool:
         """
@@ -261,8 +289,8 @@ class ModuleWrapperGlobal:
             self._lmao_request_queue.put(request_response)
 
             # Wait until it's processed or failed
-            logging.info(f"Waiting for {self.name} request to be processed")
-            time.sleep(1)
+            logging.info(f"Waiting for {self.name} request to be processed (waiting for container)")
+            response_ = None
             while True:
                 # Check process
                 with self._lmao_process_running.get_lock():
@@ -279,21 +307,18 @@ class ModuleWrapperGlobal:
                 if lmao_exception is not None:
                     raise lmao_exception
 
-                # Check status
-                with self._lmao_module_status.get_lock():
-                    module_status = self._lmao_module_status.value
-                if module_status == STATUS_IDLE:
+                # Try to get container back
+                try:
+                    response_ = self._lmao_response_queue.get(block=False)
+                except queue.Empty:
+                    pass
+                if response_:
+                    logging.info(f"Received container back from {self.name} process")
                     break
 
                 time.sleep(LMAO_LOOP_DELAY)
 
             # Update container
-            # TODO: Optimize this
-            response_ = None
-            try:
-                response_ = self._lmao_response_queue.get(block=True, timeout=1)
-            except queue.Empty:
-                logging.warning(f"Cannot get container back from {self.name} process")
             if response_:
                 request_response.response_text = response_.response_text
                 for response_image in response_.response_images:
@@ -307,6 +332,8 @@ class ModuleWrapperGlobal:
                 request_response.error = response_.error
                 request_response.response_next_chunk_start_index = response_.response_next_chunk_start_index
                 request_response.response_sent_len = response_.response_sent_len
+            else:
+                logging.warning(f"Unable to get container back from {self.name} process")
 
         ##########
         # Gemini #
@@ -327,6 +354,13 @@ class ModuleWrapperGlobal:
         # MS Copilot Designer #
         #######################
         elif self.name == "ms_copilot_designer":
+            self.module.initialize()
+            self.module.process_request(request_response)
+
+        ########
+        # Groq #
+        ########
+        elif self.name == "groq":
             self.module.initialize()
             self.module.process_request(request_response)
 
@@ -470,6 +504,10 @@ class ModuleWrapperGlobal:
 
         # MS Copilot
         elif self.name == "ms_copilot":
+            self.module.clear_conversation_for_user(user_id)
+
+        # Groq
+        elif self.name == "groq":
             self.module.clear_conversation_for_user(user_id)
 
     def on_exit(self) -> None:

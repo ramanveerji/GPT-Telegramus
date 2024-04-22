@@ -51,6 +51,11 @@
     "style_precise": "📏 Chính xác",
     "style_balanced": "⚖️ Cân đối",
     "style_creative": "🎨 Sáng tạo",
+    "model_changed": "✅ Mô hình từ mô-đun {module_name} đã thay đổi thành {changed_model}",
+    "model_select": "Mô hình hiện tại của bạn từ mô-đun {module_name}: {current_model}\nChọn mô hình mới từ mô-đun {module_name},\nhoặc bỏ qua thông báo này",
+    "model_change_error": "❌ Lỗi khi thay đổi mô hình!\n\n{error_text}",
+    "model_no_models": "❌ Bạn không thể thay đổi mô hình của mô-đun hiện tại!",
+    "button_model_change": "⚙️ Thay đổi mô hình",
     "button_stop_generating": "🛑 Dừng tạo ra",
     "button_continue": "⏩ Tiếp tục",
     "button_regenerate": "🔄 Tạo lại",
@@ -85,6 +90,10 @@
         "gemini": {
             "icon": "♊",
             "name": "Gemini"
+        },
+        "groq": {
+            "icon": "🔴",
+            "name": "Groq"
         }
     }
 }

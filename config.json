@@ -1,20 +1,35 @@
 {
     "__comment01__": "Version of config file. Please don't change it",
-    "config_version": 6,
+    "config_version": 8,
 
     "__comment02__": "General config of enabled modules",
-    "__comment03__": "Available modules: lmao_chatgpt, lmao_ms_copilot, ms_copilot, ms_copilot_designer, gemini",
+    "__comment03__": "Available modules: lmao_chatgpt, lmao_ms_copilot, ms_copilot, ms_copilot_designer, gemini, groq",
     "__comment04__": "NOTE: ms_copilot and ms_copilot_designer modules are DEPRECATED and will be removed soon",
     "modules": {
         "__comment01__": "Enabled modules",
         "enabled": [
             "lmao_chatgpt",
             "lmao_ms_copilot",
-            "gemini"
+            "gemini",
+            "groq"
         ],
 
         "__comment02__": "Default (initial) module for handling user messages",
-        "default": "lmao_chatgpt"
+        "default": "lmao_chatgpt",
+
+        "__comment03__": "Specify modules for which to use web API instead of python package. ex: ['lmao_chatgpt']",
+        "lmao_web_for_modules": [],
+
+        "__comment04__": "LMAO web API URL (without tailing slash)",
+        "lmao_web_api_url": "http://localhost:1312/api",
+
+        "__comment05__": "If needed, specify LMAO API token (from --tokens-manage) argument",
+        "__comment06__": "See <https://github.com/F33RNI/LlM-Api-Open> for more info",
+        "lmao_token_manage": "",
+
+        "__comment07__": "If needed, specify proxy in http://ip:port format (specify http even if it's https proxy)",
+        "__comment08__": "Use http://username:password@ip:port format in case of proxy with authorization",
+        "lmao_web_proxy": ""
     },
 
     "__comment05__": "Paths to files and directories",
@@ -86,6 +101,10 @@
                 "description": "↕ Change module to chat with"
             },
             {
+                "command": "model",
+                "description": "⚙️ Change model of module (ex. For 🔴 Groq module)"
+            },
+            {
                 "command": "clear",
                 "description": "🧹 Clear chat history"
             },
@@ -97,7 +116,11 @@
                 "command": "chatid",
                 "description": "🆔 Show your chat_id"
             }
-        ]
+        ],
+
+        "__comment15__": "If needed, specify proxy in http://ip:port format (specify http even if it's https proxy)",
+        "__comment16__": "Use http://username:password@ip:port format in case of proxy with authorization",
+        "proxy": ""
     },
 
     "__comment07__": "Save all requests and responses to the files",
